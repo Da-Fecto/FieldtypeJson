@@ -2,7 +2,7 @@
 /**
  * ProcessWire Table Fieldtype
  *
- * This Fieldtype stores tabular data in csv & json strings
+ * This Fieldtype stores tabular data in csv & json strings and outputs a table by default.
  *
  * For documentation about the fields used in this class, please see:
  * @copyright ©2013, Martijn Geerts
@@ -302,7 +302,6 @@ class JsonField extends WireData {
                 }
             }
         }
-
         // sanitize all values
         foreach ($this->array as $key => $row) {
             // add or remove column ?
@@ -399,27 +398,3 @@ class JsonField extends WireData {
         return $out;
     }
 }
-
-// here for reference
-// protected function jsonErrorMsg($error, $field) {
-//     switch ($error) {
-//         case JSON_ERROR_DEPTH:
-//             $error = $field->name . $this->_(" error: Maximum stack depth exceeded");
-//             break;
-//         case JSON_ERROR_STATE_MISMATCH:
-//             $error = $field->name . $this->_(" error: Underflow or the modes mismatch");
-//             break;
-//         case JSON_ERROR_CTRL_CHAR:
-//             $error = $field->name . $this->_(" error: Unexpected control character found");
-//             break;
-//         case JSON_ERROR_SYNTAX:
-//             $error = $field->name . $this->_(" error: Syntax error, malformed JSON");
-//             break;
-//         case JSON_ERROR_UTF8:
-//             $error = $field->name . $this->_(" error: Malformed UTF-8 characters, possibly incorrectly encoded");
-//             break;
-//         default:
-//             return;
-//     }
-//     throw new WireException($error);
-// }

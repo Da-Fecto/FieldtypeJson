@@ -89,17 +89,12 @@ $(function () {
         },
 
         setHeight: function () {
-
-            // 
-            if(JsonField.rows > JsonField.max) {
+            if(JsonField.rows >= JsonField.max) {
                 var table = JsonField.div.handsontable('getInstance'),
                     options = {};
                 options['height'] = (JsonField.height * 25) + 10;
                 table.updateSettings(options);            
             }
-
-            //JsonField.rows * 25;
-            console.log(JsonField.height);
         },
         // handsontable
         table: function () {
@@ -116,10 +111,10 @@ $(function () {
                 fixedRowsTop: JsonField.fixed_top,
                 maxRows: JsonField.max,
 				height: function () {
-					if(JsonField.rows > JsonField.height) {
+					if(JsonField.rows >= JsonField.height) {
                         return (JsonField.height * 25) + 10;
                     } else {
-                        return (JsonField.rows * 25) + 10;
+                        return (JsonField.rows * 25);
                     }
 				},    
                 afterChange: function (changes, source) {
