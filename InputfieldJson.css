@@ -1,0 +1,83 @@
+.InputfieldContent > .handsontable {
+	/*max-height: 750px;*/
+}
+
+.handsontable .dragdealer .handle {
+	background: #93bf0d;
+}
+
+
+.htContextMenu {
+	font-size: 13px;
+	-webkit-box-shadow: 2px 2px 15px 0px rgba(0, 0, 0, 0.64);
+	-moz-box-shadow: 2px 2px 15px 0px rgba(0, 0, 0, 0.64);
+	box-shadow: 2px 2px 15px 0px rgba(0, 0, 0, 0.64);
+}
+	.htContextMenu table.htCore {
+  		outline: 0;
+	}
+
+	.htContextMenu table tbody tr td.current {
+		color: #FFF;
+		background: #5E9ED7;
+	}
+
+
+.InputfieldJson table.htCore td {
+	font-size: 15px;
+	cursor: text;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #FFFFFF #dddddd #dddddd #FFFFFF;
+	background: #f7f9fa;
+	letter-spacing: normal;
+	padding: 2px 4.5px;
+	line-height: 19.5px;
+	box-sizing: border-box;
+	-webkit-font-smoothing: antialiased;
+}
+
+
+
+.sticky table.htCore tbody tr:first-child td {
+	font-weight: bold;
+	color: #2f4248;
+	background-color: #EAF0F2;
+	//border-top-color: #BDC5C7;
+	border-top-color: #d9e0e2;
+	white-space: nowrap
+}
+
+.InputfieldJson table.htCore tbody tr:first-child td { border-top-color: #d7e2e6; }
+.InputfieldJson table.htCore tr td:last-child { border-right-color: #D7E2E6; }
+.InputfieldJson table.htCore tbody tr:last-child td { border-bottom-color: #DDDDDD; }
+.InputfieldJson table.htCore tr td:first-child { border-left-color: #D7E2E6; }
+
+/* selection */
+	.wtBorder.current {
+		background-color: #5E9ED7 !important;
+	}
+
+	.handsontableInputHolder {
+		padding: 0 1px;
+	}
+
+	.htContextMenu table tbody tr td {
+		font-size: 13px;
+		color: #444;
+	}
+
+	.htContextMenu table tbody tr td.htSeparator {
+		border-top: 1px solid #D7E2E6;
+	}
+
+
+
+.InputfieldJson .notes {
+	text-align: right;
+	padding: 0 .5em;
+}
+
+.InputfieldJson .superuser {
+	float: left;
+}

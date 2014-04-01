@@ -1,0 +1,302 @@
+<?php
+/**
+ * ProcessWire Table Inputfield
+ *
+ * This Inputfield handles csv data import and let hansontable control this data,
+ * The fieldtype using this data wil handle csv and the json type of data.
+ *
+ * For documentation about the fields used in this class, please see:
+ * @copyright 2013, Martijn Geerts
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2010 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class InputfieldJson extends Inputfield  {
+
+    /**
+     * Give some information
+     *
+     * @return array
+     */
+    public static function getModuleInfo() {
+        return array(
+            'title' => __('Json', __FILE__), // Module Title
+            'summary' => __('Json (positive or negative)', __FILE__), // Module Summary
+            'version' => 1,
+            'requires' => array('FieldtypeJson')
+            );
+    }
+
+    /**
+     * Setup defaults, getConfigInputfields pick these up when not set
+     *
+     */
+    public function __construct() {
+        $this->set('input_height', 25);
+        $this->set('input_header', 1);
+        $this->set('input_description', '');
+
+        // Defaults from the JsonField::construct
+        $field = new JsonField;
+        $data = $field->data;
+        foreach ($field->data as $key => $value) {
+            if (in_array($key, array('json','csv','rows','columns'))) continue;
+            $this->set($key, $value);
+        }
+
+        parent::__construct();
+    }
+
+    /**
+     * Ininitialize the module, needed for every ProcessWire module
+     *
+     * @return [type]
+     */
+    public function init() {
+        $config = $this->config;
+        $class = $this->className();
+        $config->styles->append($config->urls->$class . 'handsontable/jquery.handsontable.full.css');       
+        $config->scripts->append($config->urls->$class . 'handsontable/jquery.handsontable.full.js');
+
+
+
+        parent::init();
+    }
+
+    public function setAttribute($key, $value) {
+        if($key == 'value' && !$value instanceof JsonField && !is_null($value))
+            throw new WireException("This input only accepts a JsonField for it's value");
+        return parent::setAttribute($key, $value);
+    }
+
+    /**
+     * The field markup, most action is done by javascript.
+     *
+     * @return string
+     */
+    public function ___render() {
+        
+        $value = $this->attr('value') ? $this->attr('value') : new JsonField();
+        $name = $this->name;
+
+        if($value->json) {
+
+            $range = range($value->min_col, $value->max_col);
+            $attr = array(
+                'data-rows' => $value->rows,
+                'data-columns' => $value->columns,
+                'data-max' => $value->max,
+                'data-header' => $this->data['input_header'],
+                'data-height' => $this->data['input_height'],
+                'data-minimum-columns' => min($range),
+                'data-maximum-columns' => max($range),
+                'data-csv-description' => htmlspecialchars($this->input_description),
+                );
+
+            $attributes = '';
+            foreach($attr as $k => $v) $attributes .= "$k='$v' ";
+            $subselectors = $this->user->isSuperuser() ? "<span class='superuser'>\$page->{$name} - \$page->{$name}->json - \$page->{$name}->csv</span> " : '';
+            $out  = "<div id='table_{$name}' class='handsontable' {$attributes}></div>" .
+                "<p class='notes'>" .
+                $subselectors .
+                "  <i class='fa fa-table'></i> rows: <span class='rows'>$value->rows</span>, columns: <span class='columns'>$value->columns</span>" .
+                "</p>" .
+                "<input name='{$this->name}_json' type='hidden' value='$value->json'>";
+        } else {
+            $out  = isset($this->input_description) ? "<p class='description csv'>$this->input_description</p>" : '';
+            $out .= "<textarea name='{$this->name}_csv' rows='10' class='FieldtypeTextarea InputfieldMaxWidth'>$value->csv</textarea>";
+        }
+
+        return $out;
+    }
+
+    /**
+     * Only called after form submission, here we also populate the Fieldtype and set track changes.
+     *
+     * @param WireInputData $input
+     * @return $this
+     */
+    public function ___processInput(WireInputData $input) {
+
+        $jsonField = $this->attr('value');
+        $name = $this->attr('name');
+        $json = $name . "_json";
+        $csv = $name . "_csv";
+
+        // don't allow overwrite if no subfield ?
+        if(isset($input->$name)) return $this;
+
+        $fields = array(
+            'csv' => $name . "_csv",
+            'json' => $name . "_json",
+            );
+
+        // if last row from hansontable is removed, value isset to []
+        if ($input->$fields['json'] == '[]') unset($fields['json']);
+        
+        foreach ($fields as $key => $name) {
+            if (isset($input->$fields[$key])) {
+                // filter field breaking single quote
+                $value = str_replace("'", '',  $input->$name);
+                $jsonField->type = $key;
+                $jsonField->createArray($value);
+                $jsonField->set($key, $jsonField->sanitizedString());
+                $this->trackChange('value');
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get any custom configuration fields for this Inputfield
+     *
+     * @return InputfieldWrapper
+     */
+    public function ___getConfigInputfields() {
+
+        $inputfields = parent::___getConfigInputfields();
+
+        // Fieldset for Data
+        $fieldset = $this->modules->get('InputfieldFieldset');
+        $fieldset->label = $this->_("Data Settings");
+        // Max rows (for field)
+        $field = $this->modules->get('InputfieldInteger');
+        $field->attr('name', 'max');
+        $field->attr('value', $this->max );
+        $field->label = $this->_("Limit Data Rows");
+        $field->description =  $this->_("The maximun number of rows this fieldtype can hold. ");
+        $field->description .= $this->_("Every single value has to be processed both client- and server-side so performance wise is it is good to have a low amount of rows.");
+        $field->notes = $this->_("The exceeding number of rows will be cut off.");
+        $field->attr('min', 1);
+        $field->attr('max', 250);
+        $field->attr('size', 3);
+        $field->attr('type', 'number');
+        $field->columnWidth = 75;
+        $fieldset->append($field);
+        // Force integers
+        $field = $this->modules->get('InputfieldRadios');
+        $field->attr('name', 'numeric');
+        $field->label = $this->_('Force Numeric');
+        $field->description = $this->_('Store numeric values in the JSON array as:');
+        $field->addOption(1, __('Integers'));
+        $field->addOption(0, __('strings'));
+        $field->attr('value', $this->numeric);
+        $field->columnWidth = 25;
+        $fieldset->append($field);
+        // Minimum columns
+        $field = $this->modules->get('InputfieldInteger');
+        $field->attr('name', 'min_col');
+        $field->attr('value', $this->min_col);
+        $field->label = $this->_("Minimum Data columns");
+        $field->description = $this->_("The minimum amount of columns the data should have. Shows an error when exceeds.");
+        $field->notes = $this->_("0 means no limitation");
+        $field->attr('min', 0);
+        $field->attr('max', 100);
+        $field->attr('size', 3);
+        $field->attr('type', 'number');
+        $field->columnWidth = 50;
+        $fieldset->append($field);
+        // Maximum columns
+        $field = $this->modules->get('InputfieldInteger');
+        $field->attr('name', 'max_col');
+        $field->attr('value', $this->max_col);
+        $field->label = $this->_("Maximum Data columns");
+        $field->description = $this->_("The maximum amount of columns the data will holt. The exceeding number of columns will be sliced.");
+        $field->notes = $this->_("0 means no limitation");
+        $field->attr('min', 0);
+        $field->attr('max', 100);
+        $field->attr('size', 3);
+        $field->attr('type', 'number');
+        $field->columnWidth = 50;
+        $fieldset->append($field);
+        // Append all data Settings
+        $inputfields->append($fieldset);
+
+        // Fieldset for Inputfield
+        $fieldset = $this->modules->get('InputfieldFieldset');
+        $fieldset->label = $this->_("Inputfield Settings");
+        // Visual rows
+        $field = $this->modules->get('InputfieldInteger');
+        $field->attr('name', 'input_height');
+        $field->attr('value', $this->input_height);
+        $field->label = $this->_("Inputfield Height");
+        $field->description = $this->_("The maximun rows shown in the inputfield.");
+        $field->attr('min', 1);
+        $field->attr('max', 250);
+        $field->attr('size', 3);
+        $field->attr('type', 'number');
+        $field->columnWidth = 50;
+        $fieldset->append($field);
+        // First Row
+        $field = $this->modules->get('InputfieldRadios');
+        $field->attr('name', 'input_header');
+        $field->label = $this->_("First Row");
+        $field->description = $this->_("Should we use CSS styling and make the first row sticky in the inputfield?");
+        $field->addOption(1, __('Yep'));
+        $field->addOption(0, __('Nope'));
+        $field->attr('value', $this->input_header);
+        $field->columnWidth = 50;
+        //$field->optionColumns = 2;
+        $fieldset->append($field);
+        // Description for CVS import
+        $field = $this->modules->get('InputfieldTextarea');
+        $field->attr('name', 'input_description');
+        $field->attr('value', $this->input_description );
+        $field->label = $this->_("CSV Import Description");
+        $field->description = $this->_("Additional information describing the csv/import part and/or instructions on how to enter the data.");
+        $field->attr('rows', 3);
+        $fieldset->append($field);
+        // Append all Inputfield Settings
+        $inputfields->append($fieldset);
+
+        // Markup Output (field)
+        $fieldset = $this->modules->get('InputfieldFieldset');
+        $fieldset->label = $this->_("Table Markup");
+        $fieldset->description = $this->_("Render settings for the table when using this field directly in our template. (\$page->{$this->name})");
+        // Table Header
+        $field = $this->modules->get('InputfieldRadios');
+        $field->attr('name', 'thead');
+        $field->label = $this->_("Table Header");
+        $field->description = $this->_("Should the first row of the table markup use the thead tag?");
+        $field->addOption(1, __('Yep'));
+        $field->addOption(0, __('Nope'));
+        $field->attr('value', $this->thead);
+        $field->columnWidth = 50;
+        //$field->optionColumns = 2;
+        $fieldset->append($field);
+        // HTML indentation
+        $field = $this->modules->get('InputfieldSelect');
+        $field->attr('name', 'indent');
+        $field->label = $this->_("Tabify Markup");
+        $field->description = $this->_("Indent & format table markup, choose on how many tabs the formatting starts.");
+        $field->columnWidth = 50;
+
+        $options = array(
+            '' => 'Minified',
+            '0' => 'No tabs',
+            '1' => '1 tab',
+            '2' => '2 tabs',
+            '3' => '3 tabs',
+            '4' => '4 tabs',
+            '5' => '5 tabs',
+            '6' => '6 tabs',
+            '7' => '7 tabs',
+            '8' => '8 tabs',
+            '9' => '9 tabs'
+            );
+
+        foreach ( $options as $value => $label) {
+            $field->addOption($value,$label, ($value === $this->indent ? array('selected' => 'selected') : null));
+        }
+        $fieldset->append($field);
+
+        return $inputfields->append($fieldset);
+    }
+}

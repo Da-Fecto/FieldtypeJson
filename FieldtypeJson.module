@@ -1,0 +1,425 @@
+<?php
+/**
+ * ProcessWire Table Fieldtype
+ *
+ * This Fieldtype stores tabular data in csv & json strings
+ *
+ * For documentation about the fields used in this class, please see:
+ * @copyright ©2013, Martijn Geerts
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2010 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class FieldtypeJson extends Fieldtype {
+
+    /**
+     * Give some information
+     *
+     * @return array
+     */
+    public static function getModuleInfo() {
+        return array(
+            'title' => 'Json Field',
+            'version' => 1,
+            'summary' => 'This Fieldtype stores an JSON array',
+            'installs' => array('InputfieldJson'),
+            );
+    }
+
+    /**
+     * Get the query that matches a Fieldtype table's data with a given value
+     * This enables us to use it like "field.json=string, field.csv<=200, etc."
+     *
+     * @param string $subfield Name of the subfield (typically 'data', unless selector explicitly specified another)
+     * @param string $operator The comparison operator
+     * @throws WireException
+     */
+    public function getMatchQuery($query, $table, $subfield, $operator, $value) {
+        if ($subfield == 'json') $subfield = 'data';
+        if ($subfield == 'csv') $subfield = 'data_csv';
+        if ($subfield == 'rows') $subfield = 'data_rows';
+        if ($subfield == 'columns') $subfield = 'data_columns';
+        return parent::getMatchQuery($query, $table, $subfield, $operator, $value);
+    }
+
+    /**
+     * There's none compatible
+     *
+     * @param Field $field
+     * @return null
+     */
+    public function ___getCompatibleFieldtypes(Field $field) {
+        return null;
+    }
+
+    /**
+     * Return new instance of the Inputfield associated with this Fieldtype
+     *
+     * @param Page $page
+     * @param Field $field
+     * @return Inputfield
+     */
+    public function getInputfield(Page $page, Field $field) {
+        $inputField = $this->modules->get('InputfieldJson');
+        return $inputField;
+    }
+
+    /**
+     * Return the blank value for this fieldtype, whether that is a blank string, zero value, blank object or array
+     *
+     * @param Page $page
+     * @param Field $field
+     * @param JsonField wireData object $value
+     */
+    public function getBlankValue(Page $page, Field $field) {
+        $JsonField = new JsonField();
+        return $JsonField;
+    }
+
+    /**
+     * Get values converted when fetched from db
+     *
+     * @param Page $page
+     * @param Field $field
+     * @param JsonField wireData object $value
+     */
+    public function ___wakeupValue(Page $page, Field $field, $value) {
+        $JsonField = $this->getBlankValue($page, $field);
+        $JsonField->json = $value['data'];
+        $JsonField->csv = $value['data_csv'];
+        $JsonField->rows = (int) $value['data_rows'];
+        $JsonField->columns = (int) $value['data_columns'];
+
+        // poputate JsonField from the inputfield (settings)
+        foreach($field->data as $key => $value) {
+            if (strpos($key, "input_") === 0) continue;
+            $JsonField->set($key, $value);
+        }
+
+        $JsonField->fieldname = $field->name;
+        return $JsonField;
+    }
+
+    /**
+     * return converted from object to array for storing in database
+     *
+     * @param Page $page
+     * @param Field $field
+     * @param JsonField wireData object $value
+     * @throws WireException
+     */
+    public function ___sleepValue(Page $page, Field $field, $value) {
+        $jsonField = $value;
+        $from_api = !is_array($jsonField->array);
+        $changes = count($jsonField->getChanges());
+        $sleepValue = array();
+        if (!$jsonField instanceof JsonField) throw new WireException("Expecting an instance of JsonField");
+        if ($from_api && $jsonField->isChanged('json') && $jsonField->isChanged('csv') ) {
+            throw new WireException("Only allowed to save \$page->{$field->name}.json or \$page->{$field->name}.csv, not both.");
+        } elseif ($from_api && ($jsonField->isChanged('rows') || $jsonField->isChanged('columns'))) {
+            throw new WireException("Not allowed to save \$page->{$field->name}.rows or \$page->{$field->name}.columns.");
+        } elseif ($from_api && $changes > 1) {
+            throw new WireException("Only allowed to save \$page->{$field->name}.json or \$page->{$field->name}.csv");
+        } elseif ($from_api && !$changes) {
+            throw new WireException("Only allowed to saving for \$page->{$field->name}.json or \$page->{$field->name}.csv");
+        }
+        // The inputfield set's an array, but from the api side it doesn't,
+        // this way we know that the values are set with the API
+        if ($from_api && $changes === 1) {
+            $changed = $jsonField->getChanges();
+            $key = $changed[0];
+            $jsonField->type = $key;
+            $jsonField->createArray($jsonField->$key);
+            $jsonField->set($key, $jsonField->sanitizedString());
+            $key = $key == 'csv' ? 'json' : 'csv';
+            $jsonField->type = $key;
+            $jsonField->set($key, $jsonField->sanitizedString());
+            $jsonField->set('rows', count($jsonField->array));
+            $jsonField->set('columns', count($jsonField->array[0]));
+        }
+        if ($jsonField->isChanged('json') || $jsonField->isChanged('csv')) {
+            $sleepValue['data'] =  $jsonField->json;
+            $sleepValue['data_csv'] = $jsonField->csv;
+            $sleepValue['data_rows'] = (int) $jsonField->rows;
+            $sleepValue['data_columns'] = (int) $jsonField->columns;
+        }
+        return $sleepValue;
+    }
+
+    /**
+     * Sanitize the value for runtime storage.
+     *
+     * This method should remove anything that's invalid from the given value. If it can't be sanitized, it should be blanked.
+     * This method filters every value set to a Page instance.
+     *
+     * @param Page $page
+     * @param Field $field
+     * @param string|int|WireArray|object $value
+     * @param JsonField wireData object $value
+     */
+    public function sanitizeValue(Page $page, Field $field, $value) {
+        if (!$value instanceof JsonField) $value = $this->getBlankValue($page, $field);
+        $jsonField = $value;
+        $changes = $jsonField->getChanges();
+        $changed = count($changes);
+        if ($changed === 1) {
+            // set csv & json
+            $jsonField->set($jsonField->type, $jsonField->sanitizedString());
+            $jsonField->type = $jsonField->type === 'csv' ? 'json' : 'csv';
+            $jsonField->set($jsonField->type, $jsonField->sanitizedString());
+            // set rows & columns
+            $array = $jsonField->array;
+            $jsonField->set('rows', count($array));
+            $jsonField->set('columns', count($array[0]));
+            $page->trackChange($field->name);
+        }
+        return $value;
+    }
+
+    /**
+     * Get the database schema for this field
+     *
+     * @param Field $field In case it's needed for the schema, but usually should not.
+     * @return array
+     */
+    public function getDatabaseSchema(Field $field) {
+        $schema = parent::getDatabaseSchema($field);
+        $schema['data'] = 'mediumtext NOT NULL';
+        $schema['data_csv'] = 'mediumtext NOT NULL';
+        $schema['data_rows'] = 'int NOT NULL default 0';
+        $schema['data_columns'] = 'int NOT NULL default 0';
+        $schema['keys']['data'] = 'FULLTEXT KEY data(data)';
+        $schema['keys']['data_csv'] = 'FULLTEXT KEY data_csv(data_csv)';
+        $schema['keys']['data_rows'] = 'KEY data_rows(data_rows)';
+        $schema['keys']['data_columns'] = 'KEY data_columns(data_columns)';
+        return $schema;
+    }
+}
+
+
+
+
+/**
+ * Helper WireData Class to hold a JsonField object
+ *
+ */
+class JsonField extends WireData {
+
+    /**
+     * Man in the middle, tabular array with rows of arrays (not associative)
+     *
+     */
+    public $array = null;
+
+    /**
+     * String json or csv, who has set the self::array?
+     *
+     */
+    public $type = null;
+
+    /**
+     * How should this WireData array look like ?
+     *
+     */
+    public function __construct() {
+        $this->set('json', null);
+        $this->set('csv', null);
+        $this->set('rows', null);
+        $this->set('columns', null);
+        // runtime values
+        $this->set('max', 250);
+        $this->set('thead', 1);
+        $this->set('indent', '');
+        $this->set('numeric', 1);
+        $this->set('min_col', 0);
+        $this->set('max_col', 0);
+        $this->set('fieldname', null);
+    }
+
+    /**
+     * Set a value for this wireData JsonField.
+     *
+     * @param string $key
+     * @param mixed $value
+     */
+    public function set($key, $value) {
+        if ($key == 'json' || $key == 'csv') { $value = str_replace("'", '', $value); }
+        return parent::set($key, $value);
+    }
+
+    /**
+     * Get a value JsonField.
+     *
+     * @param string $key
+     * @return mixed wireData value
+     */
+    public function get($key) {
+        return parent::get($key);
+    }
+
+    /**
+     * Create cleaned array (all values) from dirty json/csv string
+     *
+     * @param string $dirty_string, csv or json from user input
+     * @return array $this->array, Array with rows of arrays with cleaned values.
+     * @throws WireException
+     */
+    public function createArray($dirty_string) {
+        if (!$this->type) throw new WireException(__METHOD__ . ' expect $this->type to be an int, "' . gettype($this->type) . '" given');
+        if ($this->type === 'json') { $array = json_decode($dirty_string, true); }
+        if ($this->type === 'csv') { $array = array_map("str_getcsv", explode("\n", $dirty_string)); }
+        if (!is_array($array)) throw new WireException(__METHOD__ . ' expect $array to be an array, "' . gettype($this->array) . '" given');
+        $this->array = $array;
+        $count = count($this->array);
+        if ($count > $this->max) {
+            $this->array = array_slice($this->array, 0, $this->max);
+            $this->error(sprintf($this->_('The input holds to many rows (%1$d), the output is truncated to  %2$d rows.'), $count, $this->max));
+        }
+        $clean = array();
+        $dirty = 0;
+        $filled = 0;
+        $columns = count($this->array[0]);
+        $padding = false;
+        $slicing = false;
+        $range = range($this->min_col, $this->max_col);
+        // add or remove column ?
+        if (!in_array($columns, $range) && is_array($columns)) {
+            if($columns > 1) {
+                $min = min($range);
+                $max = max($range);
+                if ($columns > $max) {
+                    $this->error($this->_('We have sliced some columns'));
+                    $slicing = true;
+                } elseif ($columns < $min) {
+                    $this->error($this->_('We have padded some columns'));
+                    $padding = true;
+                }
+            }
+        }
+
+        // sanitize all values
+        foreach ($this->array as $key => $row) {
+            // add or remove column ?
+            if ($padding) $row = array_pad($row, $min, null); // padding means "vullen"
+            if ($slicing) $row = array_slice($row, 0, $max); // padding means "vullen"
+            $clean[$key] = array_map(function($value) {
+                return $this->sanitizer->text(trim($value));
+            }, $row);
+            if (!$dirty) $dirty = count(array_diff($row, $clean[$key]));
+            if (!$filled) $filled = count(array_filter($row));
+        }
+        if ($dirty) $this->message($this->_('The input is sanitized.'));
+        $this->array = $filled ? $clean : array();
+    }
+
+    /**
+     * Encode array to string, eighter to json or csv.
+     *
+     * @return string
+     * @throws WireException
+     */
+    public function sanitizedString() {
+        if (!is_array($this->array)) throw new WireException(__METHOD__ . ' expect $this->array to be an array, "' . gettype($this->array) . '" given');
+        if (!$this->type) throw new WireException(__METHOD__ . ' expect $this->type to be an int, "' . gettype($this->type) . '" given');
+        if ($this->type === 'json') {
+            $string = $this->numeric ? json_encode($this->array, JSON_NUMERIC_CHECK) : json_encode($this->array);
+            $string = $string === '[]' ? '' : $string;
+        }
+        if ($this->type === 'csv') { $string = $this->getCsv(); }
+        return $string;
+    }
+
+    /**
+     * Encode array to csv string.
+     *
+     * @param Array
+     * @return string
+     * @throws WireException
+     */
+    protected function getCsv() {
+        if (!is_array($this->array)) throw new WireException(__METHOD__ . ' expect $this->array to be an array, "' . gettype($this->array) . '" given');
+        $out = '';
+        $handle = fopen('php://temp', 'r+'); // temp read/write file-like wrapper
+        foreach ($this->array as $line) fputcsv($handle, $line, ',', '"');
+        rewind($handle);
+        while (!feof($handle)) $out .= fread($handle, 8192);
+        fclose($handle);
+        return trim($out);
+    }
+
+    /**
+     * Output a markup table if the field queried directly.
+     *
+     * @return string
+     */
+    public function __toString() {
+
+        $array = json_decode($this->json, true);
+
+        if(!count($array)) return '';
+
+        $cells = $this->columns * $this->rows;
+        $start = $this->thead ? $this->columns : 0;
+        $out = "<table class='table-{$this->fieldname}'>";
+        if ($this->thead) {
+            $out .= "<thead><tr class='tr-1'>";
+            for ($i = 0; $i < $this->columns; $i++) {
+                $class_th = "td-" . ($i + 1);
+                $str = isset($array[0][$i]) ? $array[0][$i] : null;
+                $out .= "<th class='$class_th'>$str</th>";
+            }
+            $out .= "</tr></thead>";
+        }
+        $out .= "<tbody><tr class='tr-" . ($this->thead ? 2 : 1) . "'>";
+        for ($i = $start; $i < $cells; $i++) {
+            $col = $i % $this->columns;
+            $row = ($i / $this->columns) % $cells;
+            $str = isset($array[$row][$col]) ? $array[$row][$col] : null;
+            $class_td = "td-" . ($col + 1);
+            $class_tr = $this->thead ? "tr-" . ($row + 2) : "tr-" . ($row + 2);
+            $render_row = ($col + 1 === $this->columns) && ($i + 1 < $cells) ? true : false;
+            $out .= "<td class='$class_td'>$str</td>";
+            $out .= $render_row ? "</tr><tr class='$class_tr'>" : null;
+
+        }
+        $out .= "</tr></tbody></table>";
+        // HTML beautify
+        if ($this->indent !== false && is_int($this->indent)) {
+            $i = "\n" . str_repeat("\t" , $this->indent);
+            $search = array("<table","</table","<thead","</thead","<tbody","</tbody","<tr","</tr","<th ","<td");
+            $replace = array("$i<table","$i</table","$i\t<thead","$i\t</thead","$i\t<tbody","$i\t</tbody","$i\t\t<tr","$i\t\t</tr","$i\t\t\t<th ","$i\t\t\t<td");
+            $out = str_replace($search, $replace, $out) . "\n";
+        }
+        return $out;
+    }
+}
+
+// here for reference
+// protected function jsonErrorMsg($error, $field) {
+//     switch ($error) {
+//         case JSON_ERROR_DEPTH:
+//             $error = $field->name . $this->_(" error: Maximum stack depth exceeded");
+//             break;
+//         case JSON_ERROR_STATE_MISMATCH:
+//             $error = $field->name . $this->_(" error: Underflow or the modes mismatch");
+//             break;
+//         case JSON_ERROR_CTRL_CHAR:
+//             $error = $field->name . $this->_(" error: Unexpected control character found");
+//             break;
+//         case JSON_ERROR_SYNTAX:
+//             $error = $field->name . $this->_(" error: Syntax error, malformed JSON");
+//             break;
+//         case JSON_ERROR_UTF8:
+//             $error = $field->name . $this->_(" error: Malformed UTF-8 characters, possibly incorrectly encoded");
+//             break;
+//         default:
+//             return;
+//     }
+//     throw new WireException($error);
+// }
