@@ -17,6 +17,15 @@
  *
  */
 
+/*
+
+@todo:
+
+- Make csv downloadable from inputfield
+- Fixed header
+
+*/
+
 class InputfieldJson extends Inputfield  {
 
     /**
@@ -41,6 +50,7 @@ class InputfieldJson extends Inputfield  {
         $this->set('input_height', 25);
         $this->set('input_header', 1);
         $this->set('input_description', '');
+        $this->set('headers', '');
 
         // Defaults from the JsonField::construct
         $field = new JsonField;
@@ -70,7 +80,7 @@ class InputfieldJson extends Inputfield  {
     }
 
     public function setAttribute($key, $value) {
-        if($key == 'value' && !$value instanceof JsonField && !is_null($value))
+        if ($key == 'value' && !$value instanceof JsonField && !is_null($value))
             throw new WireException("This input only accepts a JsonField for it's value");
         return parent::setAttribute($key, $value);
     }
@@ -85,7 +95,7 @@ class InputfieldJson extends Inputfield  {
         $value = $this->attr('value') ? $this->attr('value') : new JsonField();
         $name = $this->name;
 
-        if($value->json) {
+        if ($value->json) {
 
             $range = range($value->min_col, $value->max_col);
             $attr = array(
@@ -97,14 +107,32 @@ class InputfieldJson extends Inputfield  {
                 'data-minimum-columns' => min($range),
                 'data-maximum-columns' => max($range),
                 'data-csv-description' => htmlspecialchars($this->input_description),
+                'data-column-headers' => 0
                 );
+
+            $headers = array_filter(explode(",", $this->headers));
+            if (count($headers)) {
+                $headers = array_map('trim', $headers);
+                $count = count($headers);
+                if ($count < $value->columns) {
+                    $headers = array_pad($headers, $value->columns, '');
+                } elseif ($count > $value->columns) {
+                    $headers = array_slice($headers, 0, $value->columns);
+                }
+
+
+                $attr['data-column-headers'] = json_encode($headers, JSON_UNESCAPED_UNICODE);
+                $attr['data-header'] = 0;
+            } 
+
+
 
             $attributes = '';
             foreach($attr as $k => $v) $attributes .= "$k='$v' ";
-            $subselectors = $this->user->isSuperuser() ? "<span class='superuser'>\$page->{$name} - \$page->{$name}->json - \$page->{$name}->csv</span> " : '';
+            $info = $this->user->isSuperuser() ? "<span class='superuser' title='\$page->{$name},\$page->{$name}->json,\$page->{$name}->csv'><i class='fa fa-info-circle'></i> field info</span> " : '';
             $out  = "<div id='table_{$name}' class='handsontable' {$attributes}></div>" .
                 "<p class='notes'>" .
-                $subselectors .
+                $info .
                 "  <i class='fa fa-table'></i> rows: <span class='rows'>$value->rows</span>, columns: <span class='columns'>$value->columns</span>" .
                 "</p>" .
                 "<input name='{$this->name}_json' type='hidden' value='$value->json'>";
@@ -130,7 +158,7 @@ class InputfieldJson extends Inputfield  {
         $csv = $name . "_csv";
 
         // don't allow overwrite if no subfield ?
-        if(isset($input->$name)) return $this;
+        if (isset($input->$name)) return $this;
 
         $fields = array(
             'csv' => $name . "_csv",
@@ -175,7 +203,7 @@ class InputfieldJson extends Inputfield  {
         $field->description .= $this->_("Every single value has to be processed both client- and server-side so performance wise is it is good to have a low amount of rows.");
         $field->notes = $this->_("The exceeding number of rows will be cut off.");
         $field->attr('min', 1);
-        $field->attr('max', 250);
+        $field->attr('max', 500);
         $field->attr('size', 3);
         $field->attr('type', 'number');
         $field->columnWidth = 75;
@@ -183,8 +211,8 @@ class InputfieldJson extends Inputfield  {
         // Force integers
         $field = $this->modules->get('InputfieldRadios');
         $field->attr('name', 'numeric');
-        $field->label = $this->_('Force Numeric');
-        $field->description = $this->_('Store numeric values in the JSON array as:');
+        $field->label = $this->_('Force Integers');
+        $field->description = $this->_('Force numeric string to integers');
         $field->addOption(1, __('Integers'));
         $field->addOption(0, __('strings'));
         $field->attr('value', $this->numeric);
@@ -253,6 +281,14 @@ class InputfieldJson extends Inputfield  {
         $field->description = $this->_("Additional information describing the csv/import part and/or instructions on how to enter the data.");
         $field->attr('rows', 3);
         $fieldset->append($field);
+        // Maximum columns
+        $field = $this->modules->get('InputfieldText');
+        $field->attr('name', 'headers');
+        $field->attr('value', $this->headers);
+        $field->label = $this->_("Protected Column Headers");
+        $field->description = $this->_("Seperate each header with a comma, editors are not allowed to overwrite them. ");
+        $field->notes = $this->_("Not part of the data set.");
+        $fieldset->append($field);        
         // Append all Inputfield Settings
         $inputfields->append($fieldset);
 

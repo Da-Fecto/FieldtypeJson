@@ -88,10 +88,11 @@ $(function() {
         },
 
         setHeight: function() {
-            if (JsonField.rows >= JsonField.max) {
+            if (JsonField.rows > JsonField.max) {
                 var table = JsonField.div.handsontable('getInstance'),
-                    options = {};
-                options['height'] = (JsonField.height * 25) + 10;
+                    options = {
+                        height: (JsonField.height * 25) + 10
+                    };
                 table.updateSettings(options);
             }
         },
@@ -156,6 +157,11 @@ $(function() {
                 options['maxCols'] = JsonField.div.data('maximum-columns');
             }
 
+            if (JsonField.div.data('column-headers') != 0) {
+                options['colHeaders'] = JsonField.div.data('column-headers');
+                console.log(JsonField.div.data('column-headers'));
+            }
+
             options['fixedRowsTop'] = JsonField.fixed_top;
             table.updateSettings(options);
 
@@ -179,8 +185,27 @@ $(function() {
 
     JsonField.init();
 
-    // remove default description fron csv import
+    // remove default description from csv import
     if (!$('.InputfieldJson div.handsontable').length) {
         $(".InputfieldJson").find(".description").not(".csv").remove();
     }
+
+    $(".superuser").tooltip({
+        content: function() {
+            var array = $(this).attr('title').split(','),
+                string = '';
+            $.each(array, function(index, element) {
+                string += element + "<br>";
+            });
+
+            return string;
+        },
+        extraClass: "field-info",
+        // delay: 0,
+        position: {
+            my: "left bottom",
+            at: "left top",
+            collision: "flipfit"
+        },
+    });
 });

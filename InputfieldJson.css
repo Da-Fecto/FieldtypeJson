@@ -44,6 +44,17 @@
     white-space: nowrap
 }
 
+.wtHider {
+    outline: 1px solid #aaa;
+}
+
+.handsontable .dragdealer {
+    border-color: transparent;
+    left: -1px;
+    right: -1px;
+}
+
+
 .InputfieldJson table.htCore tbody tr:first-child td { border-top-color: #d7e2e6; }
 .InputfieldJson table.htCore tr td:last-child { border-right-color: #D7E2E6; }
 .InputfieldJson table.htCore tbody tr:last-child td { border-bottom-color: #DDDDDD; }

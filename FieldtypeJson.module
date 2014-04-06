@@ -239,6 +239,7 @@ class JsonField extends WireData {
         $this->set('numeric', 1);
         $this->set('min_col', 0);
         $this->set('max_col', 0);
+        $this->set('headers', 0);
         $this->set('fieldname', null);
     }
 
@@ -305,8 +306,8 @@ class JsonField extends WireData {
         // sanitize all values
         foreach ($this->array as $key => $row) {
             // add or remove column ?
-            if ($padding) $row = array_pad($row, $min, null); // padding means "vullen"
-            if ($slicing) $row = array_slice($row, 0, $max); // padding means "vullen"
+            if ($padding) $row = array_pad($row, $min, null);
+            if ($slicing) $row = array_slice($row, 0, $max);
             $clean[$key] = array_map(function($value) {
                 return $this->sanitizer->text(trim($value));
             }, $row);
@@ -363,14 +364,34 @@ class JsonField extends WireData {
 
         if(!count($array)) return '';
 
+        $out = '';
         $cells = $this->columns * $this->rows;
         $start = $this->thead ? $this->columns : 0;
-        $out = "<table class='table-{$this->fieldname}'>";
+        $headers = array_filter(explode(",", $this->headers));
+    
+        if (count($headers)) {
+            $headers = array_map('trim', $headers);
+            $count = count($headers);
+            if ($count < $this->columns) {
+                $headers = array_pad($headers, $this->columns, '');
+            } elseif ($count > $this->columns) {
+                $headers = array_slice($headers, 0, $this->columns);
+            }
+        } else {
+            $headers = null;
+        }
+
+        $out .= "<table class='table-{$this->fieldname}'>";
         if ($this->thead) {
+            if (!$headers) {
+                $headers = $array[0];
+            } else {
+                $start = 0;
+            }
             $out .= "<thead><tr class='tr-1'>";
             for ($i = 0; $i < $this->columns; $i++) {
                 $class_th = "td-" . ($i + 1);
-                $str = isset($array[0][$i]) ? $array[0][$i] : null;
+                $str = isset($headers[$i]) ? $headers[$i] : null;
                 $out .= "<th class='$class_th'>$str</th>";
             }
             $out .= "</tr></thead>";
