@@ -22,6 +22,7 @@ $(function() {
         columns: 0, // Number of columns
         fixed_top: 1, // Fixed first row
         height: 0, // Max visible columns
+        header_height: 0, // extra height if protected header is rendered
         exists: null, // Does the inputfield exists
         data: null, // JSON data
         header: '', // Label title of the field
@@ -91,8 +92,9 @@ $(function() {
             if (JsonField.rows > JsonField.max) {
                 var table = JsonField.div.handsontable('getInstance'),
                     options = {
-                        height: (JsonField.height * 25) + 10
+                        height: (JsonField.height * 25) + JsonField.header_height + 10,
                     };
+
                 table.updateSettings(options);
             }
         },
@@ -109,11 +111,17 @@ $(function() {
                 contextMenu: true,
                 fixedRowsTop: JsonField.fixed_top,
                 maxRows: JsonField.max,
+                variableRowHeights: false,
                 height: function() {
-                    if (JsonField.rows >= JsonField.height) {
-                        return (JsonField.height * 25) + 10;
+
+                    if (JsonField.div.data('column-headers')) {
+                        JsonField.header_height = 25;
+                    }
+
+                    if (JsonField.rows > JsonField.height) {
+                        return (JsonField.height * 25);
                     } else {
-                        return (JsonField.rows * 25);
+                        return (JsonField.rows * 25) + JsonField.header_height;
                     }
                 },
                 afterChange: function(changes, source) {
@@ -142,6 +150,7 @@ $(function() {
                     JsonField.setData(changes, source);
                     JsonField.updateNotes();
                     JsonField.setHeight();
+
                 }
             });
 
@@ -157,9 +166,10 @@ $(function() {
                 options['maxCols'] = JsonField.div.data('maximum-columns');
             }
 
-            if (JsonField.div.data('column-headers') != 0) {
+            if (JsonField.div.data('column-headers')) {
                 options['colHeaders'] = JsonField.div.data('column-headers');
-                console.log(JsonField.div.data('column-headers'));
+                options['contextMenu'] = ['row_above', 'row_below', 'remove_row', 'undo', 'redo'];
+                options['minRows'] = 1;
             }
 
             options['fixedRowsTop'] = JsonField.fixed_top;
@@ -190,6 +200,7 @@ $(function() {
         $(".InputfieldJson").find(".description").not(".csv").remove();
     }
 
+    // tooltip field info
     $(".superuser").tooltip({
         content: function() {
             var array = $(this).attr('title').split(','),
@@ -200,6 +211,7 @@ $(function() {
 
             return string;
         },
+        tooltipClass: "FieldtypeJson_tip",
         extraClass: "field-info",
         // delay: 0,
         position: {
@@ -208,4 +220,39 @@ $(function() {
             collision: "flipfit"
         },
     });
+
+    // delete table
+    $('.delete-popup').dialog({
+        autoOpen: false,
+        title: 'Delete Table',
+        position: {
+            my: "center",
+            at: "center",
+            of: window
+        },
+        height: 200,
+        width: 350,
+        modal: true,
+        buttons: {
+            cancel: function() {
+                $(this).dialog("close");
+            },
+            Delete: function() {
+                delete_rows();
+            }
+        }
+    });
+
+    $(".InputfieldJson .delete").click(function() {
+        $(".delete-popup").dialog("open");
+    });
+
+    function delete_rows() {
+        $(".delete-popup").dialog("close");
+        JsonField.div.handsontable('alter', 'remove_row', 1, JsonField.rows);
+        JsonField.div.handsontable('alter', 'insert_row', 0, 0);
+        JsonField.div.handsontable('alter', 'remove_row', 1, 1);
+    }
+
+
 });

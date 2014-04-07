@@ -23,6 +23,7 @@
 
 - Make csv downloadable from inputfield
 - Fixed header
+- Drop table
 
 */
 
@@ -97,6 +98,8 @@ class InputfieldJson extends Inputfield  {
 
         if ($value->json) {
 
+            // for js data attribute
+            $data_attr = '';
             $range = range($value->min_col, $value->max_col);
             $attr = array(
                 'data-rows' => $value->rows,
@@ -110,35 +113,40 @@ class InputfieldJson extends Inputfield  {
                 'data-column-headers' => 0
                 );
 
-            $headers = array_filter(explode(",", $this->headers));
-            if (count($headers)) {
+            $headers = array_filter(explode(",", $this->data['headers']));
+            $count = count($headers);
+            if ($count) {
                 $headers = array_map('trim', $headers);
-                $count = count($headers);
                 if ($count < $value->columns) {
                     $headers = array_pad($headers, $value->columns, '');
                 } elseif ($count > $value->columns) {
                     $headers = array_slice($headers, 0, $value->columns);
                 }
 
-
                 $attr['data-column-headers'] = json_encode($headers, JSON_UNESCAPED_UNICODE);
-                $attr['data-header'] = 0;
             } 
 
+            foreach($attr as $k => $v) $data_attr .= "$k='$v' ";
+
+            // .notes 
+            $notes = array(
+                $this->user->isSuperuser() ? "<span class='superuser' title='\$page->{$name},\$page->{$name}->json,\$page->{$name}->csv'><i class='fa fa-info-circle'></i> field info</span> " : '',
+                "<a href='#' class='delete'><span class='delete'><i class='fa fa-times-circle'></i> " . $this->_("delete all rows") . "</span></a>",
+                "<span class='right'><i class='fa fa-table'></i> rows: <em class='rows'>$value->rows</em>, columns: <em class='columns'>$value->columns</em></span>"
+                );
+
+            $extra_info = implode(" ", $notes);
+
+            $out  = "<div id='table_{$name}' class='handsontable' " . $data_attr . "></div>";
+            $out .= "<p class='notes'>" . $extra_info . "</p>";
+            $out .= "<input name='" . $this->name . "_json' type='hidden' value='" . $value->json . "'>";
+
+            $out .= "<div class='delete-popup'><div class='padding'><p>Delete the table?</p></div></div>";
 
 
-            $attributes = '';
-            foreach($attr as $k => $v) $attributes .= "$k='$v' ";
-            $info = $this->user->isSuperuser() ? "<span class='superuser' title='\$page->{$name},\$page->{$name}->json,\$page->{$name}->csv'><i class='fa fa-info-circle'></i> field info</span> " : '';
-            $out  = "<div id='table_{$name}' class='handsontable' {$attributes}></div>" .
-                "<p class='notes'>" .
-                $info .
-                "  <i class='fa fa-table'></i> rows: <span class='rows'>$value->rows</span>, columns: <span class='columns'>$value->columns</span>" .
-                "</p>" .
-                "<input name='{$this->name}_json' type='hidden' value='$value->json'>";
         } else {
             $out  = isset($this->input_description) ? "<p class='description csv'>$this->input_description</p>" : '';
-            $out .= "<textarea name='{$this->name}_csv' rows='10' class='FieldtypeTextarea InputfieldMaxWidth'>$value->csv</textarea>";
+            $out .= "<textarea name='" . $this->name . "_csv' rows='10' class='FieldtypeTextarea InputfieldMaxWidth'>" . $value->csv . "</textarea>";
         }
 
         return $out;

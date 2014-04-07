@@ -31,6 +31,7 @@
     letter-spacing: normal;
     padding: 2px 4.5px;
     line-height: 19.5px;
+    height: 25px;
     box-sizing: border-box;
     -webkit-font-smoothing: antialiased;
 }
@@ -44,17 +45,18 @@
     white-space: nowrap
 }
 
-.wtHider {
-    outline: 1px solid #aaa;
+
+
+.InputfieldJson table.htCore thead th {
+    background: #2f4248;
+    border-color: #5187a0 #202e33 #37525c #5187a0;
+    color: #eaf0f2;
+    font-weight: normal;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    text-align: left;    
 }
-
-.handsontable .dragdealer {
-    border-color: transparent;
-    left: -1px;
-    right: -1px;
-}
-
-
 .InputfieldJson table.htCore tbody tr:first-child td { border-top-color: #d7e2e6; }
 .InputfieldJson table.htCore tr td:last-child { border-right-color: #D7E2E6; }
 .InputfieldJson table.htCore tbody tr:last-child td { border-bottom-color: #DDDDDD; }
@@ -79,11 +81,41 @@
     }
 
 .InputfieldJson .notes {
-    text-align: right;
-    //padding: 0 .5em;
     background: transparent;
 }
+    .InputfieldJson .notes .right {
+        float: right;
+        margin: 0 0 0 10px;
+    }
+    .InputfieldJson .right em {
+        font-style: normal;
+    }
+    .InputfieldJson .notes span {
+        margin-right: 10px;
+    }
 
-.InputfieldJson .superuser {
-    float: left;
+    .InputfieldJson .superuser {
+        float: left;
+    }
+
+    .delete-popup {
+        position: fixed;
+        width: 200px;
+        height: 100px;
+    }
+
+    .delete-popup .padding {
+        padding: 1em;
+
+    }
+
+    .ui-dialog {
+        position: fixed !important;
+        width: 100%;
+        height: 100%;
+    }
+
+
+.FieldtypeJson_tip {
+    font-weight: normal;
 }

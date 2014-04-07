@@ -239,7 +239,7 @@ class JsonField extends WireData {
         $this->set('numeric', 1);
         $this->set('min_col', 0);
         $this->set('max_col', 0);
-        $this->set('headers', 0);
+        //$this->set('headers', 0);
         $this->set('fieldname', null);
     }
 
@@ -288,9 +288,11 @@ class JsonField extends WireData {
         $columns = count($this->array[0]);
         $padding = false;
         $slicing = false;
-        $range = range($this->min_col, $this->max_col);
+        $range = range($this->min_col, count($array));
+
         // add or remove column ?
-        if (!in_array($columns, $range) && is_array($columns)) {
+        if (!in_array($columns, $range) && $columns > 0) {
+
             if($columns > 1) {
                 $min = min($range);
                 $max = max($range);
