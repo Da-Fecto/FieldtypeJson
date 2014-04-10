@@ -126,9 +126,10 @@ class FieldtypeJson extends Fieldtype {
             throw new WireException("Not allowed to save \$page->{$field->name}.rows or \$page->{$field->name}.columns.");
         } elseif ($from_api && $changes > 1) {
             throw new WireException("Only allowed to save \$page->{$field->name}.json or \$page->{$field->name}.csv");
-        } elseif ($from_api && !$changes) {
+        } elseif ($from_api && !$changes && $page->created != null) {
             throw new WireException("Only allowed to saving for \$page->{$field->name}.json or \$page->{$field->name}.csv");
         }
+
         // The inputfield set's an array, but from the api side it doesn't,
         // this way we know that the values are set with the API
         if ($from_api && $changes === 1) {
@@ -143,7 +144,8 @@ class FieldtypeJson extends Fieldtype {
             $jsonField->set('rows', count($jsonField->array));
             $jsonField->set('columns', count($jsonField->array[0]));
         }
-        if ($jsonField->isChanged('json') || $jsonField->isChanged('csv')) {
+        // On page create $page->created == null, 
+        if ($jsonField->isChanged('json') || $jsonField->isChanged('csv') || $page->created == null) {
             $sleepValue['data'] =  $jsonField->json;
             $sleepValue['data_csv'] = $jsonField->csv;
             $sleepValue['data_rows'] = (int) $jsonField->rows;

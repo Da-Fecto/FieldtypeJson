@@ -108,7 +108,7 @@ $(function() {
                 scrollH: 'auto',
                 width: JsonField.width,
                 autoWrapRow: true,
-                contextMenu: true,
+                //contextMenu: true,
                 fixedRowsTop: JsonField.fixed_top,
                 maxRows: JsonField.max,
                 variableRowHeights: false,
@@ -151,6 +151,9 @@ $(function() {
                     JsonField.updateNotes();
                     JsonField.setHeight();
 
+                },
+                UndoRedo: function(instance) {
+                    console.log(instance);
                 }
             });
 
@@ -224,14 +227,12 @@ $(function() {
     // delete table
     $('.delete-popup').dialog({
         autoOpen: false,
-        title: 'Delete Table',
+        title: 'Delete Rows',
         position: {
             my: "center",
             at: "center",
             of: window
         },
-        height: 200,
-        width: 350,
         modal: true,
         buttons: {
             cancel: function() {
@@ -250,8 +251,9 @@ $(function() {
     function delete_rows() {
         $(".delete-popup").dialog("close");
         JsonField.div.handsontable('alter', 'remove_row', 1, JsonField.rows);
-        JsonField.div.handsontable('alter', 'insert_row', 0, 0);
-        JsonField.div.handsontable('alter', 'remove_row', 1, 1);
+        // JsonField.div.handsontable('alter', 'insert_row', 0, 0);
+        // JsonField.div.handsontable('alter', 'remove_row', 1, 1);
+        JsonField.setHeight();
     }
 
 
