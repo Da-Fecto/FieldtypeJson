@@ -314,8 +314,8 @@ class InputfieldJson extends Inputfield  {
         $field = $this->modules->get('InputfieldCheckbox');
         $field->attr('name', 'numeric');
         $field->label = $this->_('Numeric');
-        $field->description  = $this->_('Force numeric string to numbers ');
-        $field->description .= $this->_("& convert comma decimal to point decimal.");
+        $field->description  = $this->_('Force numeric string to numbers.');
+        $field->notes = $this->_("heavy for CPU");
         $field->attr('autocheck', 1);
         $field->attr('uncheckedValue', 0);
         $field->attr('checkedValue', 1);
