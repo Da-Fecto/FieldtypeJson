@@ -24,6 +24,7 @@
 - Make csv downloadable from inputfield
 - Fixed header
 - Drop table
+- If seperator ; and is in text, find out how to handle. 
 
 */
 
@@ -93,14 +94,24 @@ class InputfieldJson extends Inputfield  {
      */
     public function ___render() {
         
+        $out = '';
+        $info = '';
+        $hide = 'json';
         $value = $this->attr('value') ? $this->attr('value') : new JsonField();
         $name = $this->name;
+
+        /**
+         * json part
+         * 
+         */
 
         if ($value->json) {
 
             // for js data attribute
+            $hide = 'csv';
             $data_attr = '';
             $range = range($value->min_col, $value->max_col);
+            
             $attr = array(
                 'data-rows' => $value->rows,
                 'data-columns' => $value->columns,
@@ -109,7 +120,6 @@ class InputfieldJson extends Inputfield  {
                 'data-height' => $this->data['input_height'],
                 'data-minimum-columns' => min($range),
                 'data-maximum-columns' => max($range),
-                'data-csv-description' => htmlspecialchars($this->input_description),
                 'data-column-headers' => 0
                 );
 
@@ -128,26 +138,84 @@ class InputfieldJson extends Inputfield  {
 
             foreach($attr as $k => $v) $data_attr .= "$k='$v' ";
 
+            if ($this->user->isSuperuser()) {
+                $title =array(
+                    "\$page->{$name}",
+                    "\$page->{$name}->json",
+                    "\$page->{$name}->csv",
+                    $this->data['headers'] ? "\$page->{$name}->header" : null,
+                    );
+                
+                $info .= "<span class='superuser tooltip' title='" . implode(", ", array_filter($title)) . "'>";
+                $info .= "<i class='fa fa-info-circle'></i> ";
+                $info .= $this->_("field info");
+                $info .= "</span>";
+            }
+
+
             // .notes 
             $notes = array(
-                $this->user->isSuperuser() ? "<span class='superuser' title='\$page->{$name},\$page->{$name}->json,\$page->{$name}->csv'><i class='fa fa-info-circle'></i> field info</span> " : '',
+                $info,
                 "<a href='#' class='delete'><span class='delete'><i class='fa fa-times-circle'></i> " . $this->_("delete all rows") . "</span></a>",
                 "<span class='right'><i class='fa fa-table'></i> rows: <em class='rows'>$value->rows</em>, columns: <em class='columns'>$value->columns</em></span>"
                 );
 
             $extra_info = implode(" ", $notes);
 
-            $out  = "<div id='table_{$name}' class='handsontable' " . $data_attr . "></div>";
-            $out .= "<p class='notes'>" . $extra_info . "</p>";
-            $out .= "<input name='" . $this->name . "_json' type='hidden' value='" . $value->json . "'>";
+            $out .= "<div id='{$name}_json_container'>";
+            $out .= "<div id='table_{$name}' class='handsontable' {$data_attr}></div>";
+            $out .= "<p class='notes'>{$extra_info}</p>";
+            $out .= "</div>";
 
-            $out .= "<div class='delete-popup'><div class='padding'><p>Delete the table?</p></div></div>";
+            $out .= "<input name='{$name}_json' type='hidden' value='{$value->json}'>";
+            $out .= "<div class='delete-popup'>";
+            $out .= "<div class='padding'>";
+            $out .= "<p class='description'>" . $this->_("Type DELETE in all caps then press the Delete button.") . "<p>";
+            $out .= "<input type='text' class='InputfieldMaxWidth'>";
+            $out .= "</div>";
+            $out .= "</div>";
 
+        } 
 
+        /**
+         * csv part
+         * 
+         */
+
+        if ($hide == 'csv') {
+            $classes = "ui-helper-hidden";
+            $disabled = " disabled";
         } else {
-            $out  = isset($this->input_description) ? "<p class='description csv'>$this->input_description</p>" : '';
-            $out .= "<textarea name='" . $this->name . "_csv' rows='10' class='FieldtypeTextarea InputfieldMaxWidth'>" . $value->csv . "</textarea>";
+            $classes = "";
+            $disabled = "";            
         }
+
+        $options = array(
+            "," => $this->_('comma '),
+            ";" => $this->_('semicolon '),
+            "\t" => $this->_('tab '),
+            );
+
+        $select = "<select name='{$name}_delimiter'>";
+        foreach ($options as $val => $label) {
+            $selected = $value->delimiter == $val ? ' selected' : '';
+            $select .= "<option value='{$val}'{$selected}>{$label}</option>";
+        }
+        $select .= "</select>";
+
+        $notes = array(
+            "<span class='right'><i class='fa fa-scissors tooltip' title='" . $this->_("CSV delimiter") . "'></i> {$select}</span>",
+            );
+
+
+        $extra_info = implode(" ", $notes);
+
+        $out .= "<div id='{$name}_csv_container' class='{$classes}'>";
+        $out .= isset($this->input_description) ? "<p class='description csv'>$this->input_description</p>" : '';
+        $out .= "<textarea name='{$name}_csv' rows='10' class='FieldtypeTextarea InputfieldMaxWidth'{$disabled}>{$value->csv}</textarea>";
+        $out .= "<p class='notes'>{$extra_info}</p>";
+        $out .= "</div>";
+
 
         return $out;
     }
@@ -173,13 +241,16 @@ class InputfieldJson extends Inputfield  {
             'json' => $name . "_json",
             );
 
-        // if last row from hansontable is removed, value isset to []
-        if ($input->$fields['json'] == '[]') unset($fields['json']);
-        
+        if(strlen($input->$fields['csv'])) {
+            unset($fields['json']);
+        } elseif (strlen($input->$fields['json'])) {
+            unset($fields['csv']);
+        }
+
         foreach ($fields as $key => $name) {
             if (isset($input->$fields[$key])) {
                 // filter field breaking single quote
-                $value = str_replace("'", '',  $input->$name);
+                $value = str_replace("'", '’',  $input->$name);
                 $jsonField->type = $key;
                 $jsonField->createArray($value);
                 $jsonField->set($key, $jsonField->sanitizedString());
@@ -202,28 +273,54 @@ class InputfieldJson extends Inputfield  {
         // Fieldset for Data
         $fieldset = $this->modules->get('InputfieldFieldset');
         $fieldset->label = $this->_("Data Settings");
+        $fieldset->description  = '';
+        $fieldset->description .= $this->_("Due to regional settings for Europe, floats in CSV are divided by a comma and as a result the field seperator is a semicolon. ");
+        $fieldset->description .= $this->_("Please set the “Delimiter” accordingly. ");
+        $fieldset->description .= "\n";
+        $fieldset->description .= $this->_("Check “Numeric” and comma seperated floats (regional) wil be converted to real floats. ");
+        $fieldset->description .= $this->_("“Numeric” will also try to make the rest of the numeric text numeric, independent of the setting “Delimiter”.");
+        $fieldset->description .= "\n";
+        $fieldset->description .= "\n";
+        $fieldset->description .= "**" . $this->_("Important 1: ") . "**";
+        $fieldset->description .= $this->_("The CSV output will always be comma seperated, and the JSON/CSV output will always contain real floats when “Numeric” is checked.");
+        $fieldset->description .= "\n";
+        $fieldset->description .= "**" . $this->_("Important 2: ") . "**";
+        $fieldset->description .= $this->_("Every value has to be processed both client- and server-side so performance wise is it is good to have a low amount of rows.");
         // Max rows (for field)
         $field = $this->modules->get('InputfieldInteger');
         $field->attr('name', 'max');
         $field->attr('value', $this->max );
         $field->label = $this->_("Limit Data Rows");
-        $field->description =  $this->_("The maximun number of rows this fieldtype can hold. ");
-        $field->description .= $this->_("Every single value has to be processed both client- and server-side so performance wise is it is good to have a low amount of rows.");
+        $field->description =  $this->_("The maximun number of rows this fieldtype can hold.");
         $field->notes = $this->_("The exceeding number of rows will be cut off.");
         $field->attr('min', 1);
         $field->attr('max', 500);
         $field->attr('size', 3);
         $field->attr('type', 'number');
-        $field->columnWidth = 75;
+        $field->columnWidth = 50;
+        $fieldset->append($field);
+
+        $field = $this->modules->get('InputfieldSelect');
+        $field->attr('name', 'delimiter');
+        $field->label = $this->_('Delimiter');
+        $field->description = $this->_('Set the field delimiter');
+        $field->addOption(',', __('comma '));
+        $field->addOption(";", __('semicolon'));
+        $field->addOption("\t", __('tab'));
+        $field->attr('value', $this->delimiter);
+        $field->columnWidth = 25;
         $fieldset->append($field);
         // Force integers
-        $field = $this->modules->get('InputfieldRadios');
+        $field = $this->modules->get('InputfieldCheckbox');
         $field->attr('name', 'numeric');
-        $field->label = $this->_('Force Integers');
-        $field->description = $this->_('Force numeric string to integers');
-        $field->addOption(1, __('Integers'));
-        $field->addOption(0, __('strings'));
-        $field->attr('value', $this->numeric);
+        $field->label = $this->_('Numeric');
+        $field->description  = $this->_('Force numeric string to numbers ');
+        $field->description .= $this->_("& convert comma decimal to point decimal.");
+        $field->attr('autocheck', 1);
+        $field->attr('uncheckedValue', 0);
+        $field->attr('checkedValue', 1);
+        $field->attr('value', $this->numeric);           
+        
         $field->columnWidth = 25;
         $fieldset->append($field);
         // Minimum columns
@@ -271,13 +368,14 @@ class InputfieldJson extends Inputfield  {
         $field->columnWidth = 50;
         $fieldset->append($field);
         // First Row
-        $field = $this->modules->get('InputfieldRadios');
+        $field = $this->modules->get('InputfieldCheckbox');
         $field->attr('name', 'input_header');
-        $field->label = $this->_("First Row");
+        $field->label = $this->_("Sticky Row");
         $field->description = $this->_("Should we use CSS styling and make the first row sticky in the inputfield?");
-        $field->addOption(1, __('Yep'));
-        $field->addOption(0, __('Nope'));
-        $field->attr('value', $this->input_header);
+        $field->attr('autocheck', 1);
+        $field->attr('uncheckedValue', 0);
+        $field->attr('checkedValue', 1);
+        $field->attr('value', $this->input_header);        
         $field->columnWidth = 50;
         //$field->optionColumns = 2;
         $fieldset->append($field);
@@ -294,8 +392,9 @@ class InputfieldJson extends Inputfield  {
         $field->attr('name', 'headers');
         $field->attr('value', $this->headers);
         $field->label = $this->_("Protected Column Headers");
-        $field->description = $this->_("Seperate each header with a comma, editors are not allowed to overwrite them. ");
-        $field->notes = $this->_("Not part of the data set.");
+        $field->description = $this->_("Seperate each header with a comma, editors can't overwrite them. ");
+        $field->notes  = $this->_("The headers are NOT part of the data set.");
+        $field->notes .= $this->_(" <?= \$page->$this->name->headers ?>");
         $fieldset->append($field);        
         // Append all Inputfield Settings
         $inputfields->append($fieldset);
@@ -305,13 +404,15 @@ class InputfieldJson extends Inputfield  {
         $fieldset->label = $this->_("Table Markup");
         $fieldset->description = $this->_("Render settings for the table when using this field directly in our template. (\$page->{$this->name})");
         // Table Header
-        $field = $this->modules->get('InputfieldRadios');
+        $field = $this->modules->get('InputfieldCheckbox');
         $field->attr('name', 'thead');
         $field->label = $this->_("Table Header");
         $field->description = $this->_("Should the first row of the table markup use the thead tag?");
-        $field->addOption(1, __('Yep'));
-        $field->addOption(0, __('Nope'));
+        $field->attr('autocheck', 1);
+        $field->attr('uncheckedValue', 0);
+        $field->attr('checkedValue', 1);
         $field->attr('value', $this->thead);
+
         $field->columnWidth = 50;
         //$field->optionColumns = 2;
         $fieldset->append($field);

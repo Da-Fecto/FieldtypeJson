@@ -126,10 +126,9 @@ class FieldtypeJson extends Fieldtype {
             throw new WireException("Not allowed to save \$page->{$field->name}.rows or \$page->{$field->name}.columns.");
         } elseif ($from_api && $changes > 1) {
             throw new WireException("Only allowed to save \$page->{$field->name}.json or \$page->{$field->name}.csv");
-        } elseif ($from_api && !$changes && $page->created != null) {
+        } elseif ($from_api && !$changes && $page->created !== null) {
             throw new WireException("Only allowed to saving for \$page->{$field->name}.json or \$page->{$field->name}.csv");
         }
-
         // The inputfield set's an array, but from the api side it doesn't,
         // this way we know that the values are set with the API
         if ($from_api && $changes === 1) {
@@ -144,8 +143,8 @@ class FieldtypeJson extends Fieldtype {
             $jsonField->set('rows', count($jsonField->array));
             $jsonField->set('columns', count($jsonField->array[0]));
         }
-        // On page create $page->created == null, 
-        if ($jsonField->isChanged('json') || $jsonField->isChanged('csv') || $page->created == null) {
+        // On page create $page->created === null, 
+        if ($jsonField->isChanged('json') || $jsonField->isChanged('csv') || $page->created === null) {
             $sleepValue['data'] =  $jsonField->json;
             $sleepValue['data_csv'] = $jsonField->csv;
             $sleepValue['data_rows'] = (int) $jsonField->rows;
@@ -243,6 +242,7 @@ class JsonField extends WireData {
         $this->set('max_col', 0);
         //$this->set('headers', 0);
         $this->set('fieldname', null);
+        $this->set('delimiter', ',');
     }
 
     /**
@@ -267,16 +267,26 @@ class JsonField extends WireData {
     }
 
     /**
+     * Methode for the str_getcsv function to use as callback
+     * 
+     * @param  [type] $string [description]
+     * @return array array('value 1', 'value 2', 'value 3', 'etc...')
+     */
+    protected function stringGetcsv($line) {
+        return str_getcsv($line, $this->delimiter);
+    }
+
+    /**
      * Create cleaned array (all values) from dirty json/csv string
      *
-     * @param string $dirty_string, csv or json from user input
+     * @param string $string, csv or json from user input
      * @return array $this->array, Array with rows of arrays with cleaned values.
      * @throws WireException
      */
-    public function createArray($dirty_string) {
+    public function createArray($string) {
         if (!$this->type) throw new WireException(__METHOD__ . ' expect $this->type to be an int, "' . gettype($this->type) . '" given');
-        if ($this->type === 'json') { $array = json_decode($dirty_string, true); }
-        if ($this->type === 'csv') { $array = array_map("str_getcsv", explode("\n", $dirty_string)); }
+        if ($this->type === 'json') { $array = json_decode($string, true); }
+        if ($this->type === 'csv') { $array = array_map(array($this, 'stringGetcsv'), explode("\n", $string));}
         if (!is_array($array)) throw new WireException(__METHOD__ . ' expect $array to be an array, "' . gettype($this->array) . '" given');
         $this->array = $array;
         $count = count($this->array);
@@ -287,26 +297,24 @@ class JsonField extends WireData {
         $clean = array();
         $dirty = 0;
         $filled = 0;
-        $columns = count($this->array[0]);
         $padding = false;
         $slicing = false;
-        $range = range($this->min_col, count($array));
+        $columns = count($this->array[0]);
+        $range = range($this->min_col, $this->max_col);
 
-        // add or remove column ?
-        if (!in_array($columns, $range) && $columns > 0) {
-
-            if($columns > 1) {
-                $min = min($range);
-                $max = max($range);
-                if ($columns > $max) {
-                    $this->error($this->_('We have sliced some columns'));
-                    $slicing = true;
-                } elseif ($columns < $min) {
-                    $this->error($this->_('We have padded some columns'));
-                    $padding = true;
-                }
+        // 
+        if (!($range[0] === 0 && count($range) === 1) && !in_array($columns, $range) && $columns && strlen($string)) { 
+            $min = min($range);
+            $max = max($range);
+            if ($columns > $max) {
+                $this->error($this->_('We have sliced some columns'));
+                $slicing = true;
+            } elseif ($columns < $min) {
+                $this->error($this->_('We have padded some columns'));
+                $padding = true;
             }
         }
+
         // sanitize all values
         foreach ($this->array as $key => $row) {
             // add or remove column ?
@@ -363,16 +371,12 @@ class JsonField extends WireData {
      * @return string
      */
     public function __toString() {
-
         $array = json_decode($this->json, true);
-
         if(!count($array)) return '';
-
         $out = '';
         $cells = $this->columns * $this->rows;
         $start = $this->thead ? $this->columns : 0;
         $headers = array_filter(explode(",", $this->headers));
-    
         if (count($headers)) {
             $headers = array_map('trim', $headers);
             $count = count($headers);
@@ -384,7 +388,6 @@ class JsonField extends WireData {
         } else {
             $headers = null;
         }
-
         $out .= "<table class='table-{$this->fieldname}'>";
         if ($this->thead) {
             if (!$headers) {

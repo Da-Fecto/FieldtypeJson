@@ -82,6 +82,7 @@
 
 .InputfieldJson .notes {
     background: transparent;
+    margin: 0;
 }
     .InputfieldJson .notes .right {
         float: right;
@@ -105,17 +106,24 @@
     }
 
     .delete-popup .padding {
-        padding: 1em;
+        padding: 0 1em 1em 1em;
 
     }
 
     .ui-dialog {
-        position: fixed !important;
+        position: fixed;
         width: 100%;
         height: 100%;
     }
 
-
-.FieldtypeJson_tip {
+.anti-aliased {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
     font-weight: normal;
 }
+
+.InputfieldJson .InputfieldContent > div > .handsontable {
+    margin-bottom: 4px;
+    border-bottom: 1px solid #DDDDDD;
+}
+

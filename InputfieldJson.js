@@ -1,41 +1,53 @@
-$(function() {
+$(function () {
 
     "use strict";
 
     var JsonField = {
 
-        /**
-         * Variables
-         *
-         */
-
-        id: '', // id of the wrapper
-        name: '', // clean fieldname, without json or csv
-        div: '', // the wrapper div
-        parent: '', // jQuery .inputfield li
-        input: '', // jQuery inputfield for JSON
-        notes: '', // jQuery .notes
-        desc: '', // text, csv description
-        val: '', // inputfield value, raw data
-        rows: 0, // Number of rows
-        max: 0, // Maximum number of rows
-        columns: 0, // Number of columns
-        fixed_top: 1, // Fixed first row
-        height: 0, // Max visible columns
-        header_height: 0, // extra height if protected header is rendered
-        exists: null, // Does the inputfield exists
-        data: null, // JSON data
-        header: '', // Label title of the field
-        width: 0, // width of the field
-
-
-        /**
-         * Functions
-         *
-         */
+        // id of the handson wrapper
+        id: '',
+        // fieldname, without json or csv
+        name: '',
+        // the wrapper div 
+        div: '',
+        // jQuery .inputfield li
+        parent: '',
+        // jQuery inputfield for JSON
+        input: '',
+        // jQuery textarea for CSV
+        textarea: '',
+        // jQuery .notes
+        notes: '',
+        // inputfield value, raw data
+        val: '',
+        // number of rows
+        rows: 0,
+        // number of columns
+        columns: 0,
+        // max number of rows
+        max: 0,
+        // fixed first row
+        fixed_top: 1,
+        // max visible columns
+        height: 0,
+        // extra height if protected header is rendered
+        header_height: 0,
+        // does the inputfield exists
+        exists: null,
+        // JSON data
+        data: null,
+        // label title of the field
+        header: '',
+        // width of the field
+        width: 0,
+        // containers
+        containers: {
+            'json': null,
+            'csv': null,
+        },
 
         // populate the values  
-        setValue: function() {
+        setValue: function () {
             JsonField.id = $('.InputfieldJson div.handsontable');
             if (!JsonField.id.length) return false;
             JsonField.id = $('.InputfieldJson div.handsontable').attr('id');
@@ -48,58 +60,66 @@ $(function() {
             JsonField.fixed_top = JsonField.div.data('header');
             JsonField.height = JsonField.div.data('height');
             JsonField.input = $("input[name='" + JsonField.name + "_json']");
+            JsonField.textarea = $("textarea[name='" + JsonField.name + "_csv']");
             JsonField.notes = JsonField.parent.find(".notes");
-            JsonField.desc = JsonField.div.data('csv-description');;
             JsonField.val = JsonField.input.val();
             JsonField.header = $("#wrap_Inputfield_" + JsonField.name + " .InputfieldHeader").text();
             JsonField.width = JsonField.div.width();
-            JsonField.exists = function() {
+            JsonField.containers.json = $("#" + JsonField.name + "_json_container");
+            JsonField.containers.csv = $("#" + JsonField.name + "_csv_container");
+            JsonField.exists = function () {
                 return JsonField.div.length && JsonField.value ? true : false;
             };
             JsonField.data = JSON.parse(JsonField.val);
         },
 
         // source is one of the strings: "alter", "empty", "edit", "populateFromArray", "loadData", "autofill", "paste"
-        setData: function(changes, source) {
-            // no data setting if loaded
-            if (source == 'loadData') return;
+        setData: function (changes, source) {
 
             var table = JsonField.div.handsontable('getInstance');
-            JsonField.data = table.getData();
 
-            if (!JsonField.data.length) {
+            JsonField.rows = JsonField.div.handsontable('countRows'),
+            JsonField.columns = JsonField.div.handsontable('countCols');
+
+            if (!JsonField.rows || !JsonField.columns) {
+
+                JsonField.input.val('');
+                JsonField.input.prop('disabled', 'disabled');
+                JsonField.containers.json.slideUp("slow");
+
+                JsonField.textarea.val('');
+                JsonField.textarea.prop("disabled", false);
+                JsonField.containers.csv.slideDown("slow");
+
+                // prevent error
+                table.updateSettings({
+                    data: [[]]
+                });
                 table.destroy();
-                JsonField.input.val('[]');
-                JsonField.parent.find(".description").remove();
-                JsonField.notes.before("<p class='description csv'></p><textarea name='table_csv' rows='10' class='FieldtypeTextarea InputfieldMaxWidth'></textarea>");
-                $(".description.csv").text(JsonField.desc);
-                JsonField.notes.remove();
-                JsonField.div.remove();
             } else {
-                JsonField.input.val(JSON.stringify(table.getData()));
+                JsonField.data = table.getData();
+                JsonField.input.val(JSON.stringify(JsonField.data));
+                return true;
             }
 
         },
 
-        updateNotes: function() {
-            JsonField.rows = JsonField.div.handsontable('countRows'),
-            JsonField.columns = JsonField.div.handsontable('countCols');
+        updateNotes: function () {
             JsonField.div.next(".notes").find(".rows").text(JsonField.rows);
             JsonField.div.next(".notes").find(".columns").text(JsonField.columns);
         },
 
-        setHeight: function() {
+        setHeight: function () {
+            var table = JsonField.div.handsontable('getInstance'),
+                options = {};
             if (JsonField.rows > JsonField.max) {
-                var table = JsonField.div.handsontable('getInstance'),
-                    options = {
-                        height: (JsonField.height * 25) + JsonField.header_height + 10,
-                    };
-
-                table.updateSettings(options);
+                options['height'] = (JsonField.height * 25) + JsonField.header_height + 10;
             }
+            table.updateSettings(options);
         },
+
         // handsontable
-        table: function() {
+        table: function () {
 
             JsonField.div.handsontable({
                 data: JsonField.data,
@@ -108,12 +128,11 @@ $(function() {
                 scrollH: 'auto',
                 width: JsonField.width,
                 autoWrapRow: true,
-                //contextMenu: true,
+                contextMenu: true,
                 fixedRowsTop: JsonField.fixed_top,
                 maxRows: JsonField.max,
                 variableRowHeights: false,
-                height: function() {
-
+                height: function () {
                     if (JsonField.div.data('column-headers')) {
                         JsonField.header_height = 25;
                     }
@@ -124,35 +143,42 @@ $(function() {
                         return (JsonField.rows * 25) + JsonField.header_height;
                     }
                 },
-                afterChange: function(changes, source) {
+                afterChange: function (changes, source) {
                     JsonField.setData(changes, source);
                 },
-                afterRemoveRow: function(index, amount) {
+                afterRemoveRow: function (index, amount) {
                     // index is an index of starter row.
                     // amount is an anount of removed rows.
-                    JsonField.setData(index, amount);
-                    JsonField.updateNotes();
-                    JsonField.setHeight();
+                    JsonField.exists = JsonField.setData(index, amount);
+                    if (JsonField.exists) {
+                        JsonField.setHeight();
+                        JsonField.updateNotes();
+                    }
                 },
-                afterCreateRow: function(index, amount) {
+                afterCreateRow: function (index, amount) {
                     // index represents the index of first newly created row in the data source array.
                     // amount number of newly created rows in the data source array.                    
-                    JsonField.setData(index, amount);
-                    JsonField.updateNotes();
-                    JsonField.setHeight();
+                    JsonField.exists = JsonField.setData(index, amount);
+                    if (JsonField.exists) {
+                        JsonField.setHeight();
+                        JsonField.updateNotes();
+                    }
                 },
-                afterRemoveCol: function(changes, source) {
-                    JsonField.setData(changes, source);
-                    JsonField.updateNotes();
-                    JsonField.setHeight();
+                afterRemoveCol: function (changes, source) {
+                    JsonField.exists = JsonField.setData(changes, source);
+                    if (JsonField.exists) {
+                        JsonField.setHeight();
+                        JsonField.updateNotes();
+                    }
                 },
-                afterCreateCol: function(changes, source) {
-                    JsonField.setData(changes, source);
-                    JsonField.updateNotes();
-                    JsonField.setHeight();
-
+                afterCreateCol: function (changes, source) {
+                    JsonField.exists = JsonField.setData(changes, source);
+                    if (JsonField.exists) {
+                        JsonField.setHeight();
+                        JsonField.updateNotes();
+                    }
                 },
-                UndoRedo: function(instance) {
+                UndoRedo: function (instance) {
                     console.log(instance);
                 }
             });
@@ -171,7 +197,7 @@ $(function() {
 
             if (JsonField.div.data('column-headers')) {
                 options['colHeaders'] = JsonField.div.data('column-headers');
-                options['contextMenu'] = ['row_above', 'row_below', 'remove_row', 'undo', 'redo'];
+                //options['contextMenu'] = ['row_above', 'row_below', 'remove_row', 'undo', 'redo'];
                 options['minRows'] = 1;
             }
 
@@ -184,7 +210,7 @@ $(function() {
          * Controller
          *
          */
-        init: function() {
+        init: function () {
             if (JsonField.setValue() !== false) {
                 JsonField.table();
 
@@ -203,31 +229,52 @@ $(function() {
         $(".InputfieldJson").find(".description").not(".csv").remove();
     }
 
-    // tooltip field info
+    $(".tooltip").tooltip({
+        tooltipClass: "ui-tooltip anti-aliased",
+        position: {
+            my: "center bottom-20",
+            at: "center top",
+            using: function (position, feedback) {
+                $(this).css(position);
+                $("<div>")
+                    .addClass("arrow anti-aliased")
+                    .addClass(feedback.vertical)
+                    .addClass(feedback.horizontal)
+                    .appendTo(this);
+            }
+        }
+    });
+
+
+
+    $(".superuser").tooltip($(".tooltip").tooltip("option"));
     $(".superuser").tooltip({
-        content: function() {
+        content: function () {
             var array = $(this).attr('title').split(','),
                 string = '';
-            $.each(array, function(index, element) {
+            $.each(array, function (index, element) {
                 string += element + "<br>";
             });
-
             return string;
-        },
-        tooltipClass: "FieldtypeJson_tip",
-        extraClass: "field-info",
-        // delay: 0,
-        position: {
-            my: "left bottom",
-            at: "left top",
-            collision: "flipfit"
-        },
+        }
     });
+
+    $(".tooltip").tooltip();
 
     // delete table
     $('.delete-popup').dialog({
+        // prevent annoying jump bug
+        open: function (event, ui) {
+            $(this).closest('.ui-dialog').find('.ui-dialog-titlebar-close').hide();
+        },
+        show: {
+            effect: "puff",
+            duration: 150
+        },
         autoOpen: false,
-        title: 'Delete Rows',
+        // dialogClass: "no-close",
+        title: "Delete all rows from " + JsonField.header + "?",
+        width: 400,
         position: {
             my: "center",
             at: "center",
@@ -235,25 +282,37 @@ $(function() {
         },
         modal: true,
         buttons: {
-            cancel: function() {
+            Cancel: function () {
+                $(this).find("input").val('');
                 $(this).dialog("close");
             },
-            Delete: function() {
+            Delete: function () {
                 delete_rows();
             }
         }
     });
 
-    $(".InputfieldJson .delete").click(function() {
+    $(".InputfieldJson .delete").click(function () {
         $(".delete-popup").dialog("open");
+        $(".ui-widget-overlay").click(function () {
+            $(".delete-popup").dialog("close");
+        });
     });
+
+    // press return/enter confirm
+    $(".delete-popup").keyup(function (event) {
+        if (event.keyCode == 13) {
+            $(".ui-dialog-buttonset button").eq(1).click();
+        }
+    });
+
+
 
     function delete_rows() {
         $(".delete-popup").dialog("close");
-        JsonField.div.handsontable('alter', 'remove_row', 1, JsonField.rows);
-        // JsonField.div.handsontable('alter', 'insert_row', 0, 0);
-        // JsonField.div.handsontable('alter', 'remove_row', 1, 1);
-        JsonField.setHeight();
+        if ($(".delete-popup input").val() === 'DELETE') {
+            JsonField.div.handsontable('alter', 'remove_row', 0, JsonField.rows);
+        }
     }
 
 
