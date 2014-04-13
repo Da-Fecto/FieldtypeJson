@@ -230,20 +230,23 @@ class InputfieldJson extends Inputfield  {
 
         $jsonField = $this->attr('value');
         $name = $this->attr('name');
+        $delimiter = $name . "_delimiter";
         $json = $name . "_json";
         $csv = $name . "_csv";
 
         // don't allow overwrite if no subfield ?
         if (isset($input->$name)) return $this;
 
+        $jsonField->data['delimiter'] = $input->$delimiter;
+
         $fields = array(
-            'csv' => $name . "_csv",
-            'json' => $name . "_json",
+            'csv' => $csv,
+            'json' => $json,
             );
 
-        if(strlen($input->$fields['csv'])) {
+        if (strlen($input->$csv)) {
             unset($fields['json']);
-        } elseif (strlen($input->$fields['json'])) {
+        } elseif (strlen($input->$json)) {
             unset($fields['csv']);
         }
 

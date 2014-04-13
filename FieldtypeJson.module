@@ -284,13 +284,10 @@ class JsonField extends WireData {
      * @throws WireException
      */
     public function createArray($string) {
-
-   $mtime = microtime(); 
-   $mtime = explode(" ",$mtime); 
-   $mtime = $mtime[1] + $mtime[0]; 
-   $starttime = $mtime; 
-
-
+        // $mtime = microtime(); 
+        // $mtime = explode(" ", $mtime); 
+        // $mtime = $mtime[1] + $mtime[0]; 
+        // $starttime = $mtime; 
         if (!$this->type) throw new WireException(__METHOD__ . ' expect $this->type to be an int, "' . gettype($this->type) . '" given');
         if ($this->type === 'json') { $array = json_decode($string, true); }
         if ($this->type === 'csv') { $array = array_map(array($this, 'stringGetcsv'), explode("\n", $string));}
@@ -320,7 +317,6 @@ class JsonField extends WireData {
                 $padding = true;
             }
         }
-
         // sanitize all values
         foreach ($this->array as $key => $row) {
             // add or remove column ?
@@ -329,7 +325,7 @@ class JsonField extends WireData {
             $clean[$key] = array_map(function($value) {
                 $value = trim($value);
                 if ($this->numeric) {
-                    // fast check for heavy prech_match 
+                    // fast check for heavy preg_match 
                     if(ctype_digit(substr($value, 0, 1))) {
                         // 123,45 -> $match[0] else match is NULL
                         preg_match('/^\d+,\d+$/', $value, $match);
@@ -344,14 +340,12 @@ class JsonField extends WireData {
         }
         if ($dirty) $this->message($this->_('The input is sanitized.'));
         $this->array = $filled ? $clean : array();
-
-       $mtime = microtime(); 
-       $mtime = explode(" ",$mtime); 
-       $mtime = $mtime[1] + $mtime[0]; 
-       $endtime = $mtime; 
-       $totaltime = ($endtime - $starttime);
-
-       $this->message("total time: " . $totaltime); 
+       // $mtime = microtime(); 
+       // $mtime = explode(" ",$mtime); 
+       // $mtime = $mtime[1] + $mtime[0]; 
+       // $endtime = $mtime; 
+       // $totaltime = ($endtime - $starttime);
+       // $this->message("total time: " . $totaltime); 
     }
 
     /**
