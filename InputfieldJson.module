@@ -52,6 +52,7 @@ class InputfieldJson extends Inputfield  {
         $this->set('input_height', 25);
         $this->set('input_header', 1);
         $this->set('input_description', '');
+        $this->set('input_no_import', 0);
         $this->set('headers', '');
 
         // Defaults from the JsonField::construct
@@ -105,37 +106,65 @@ class InputfieldJson extends Inputfield  {
          * 
          */
 
-        if ($value->json) {
+        //if ($value->json || $this->data['input_no_import']) {
+        if ($value->json || $this->data['input_no_import']) {
 
             // for js data attribute
             $hide = 'csv';
-            $data_attr = '';
-            $range = range($value->min_col, $value->max_col);
-            
+            $attr = array();
+            $range = range($value->min_col, $value->max_col);     
+            $headers = array_map('trim', explode(",", $this->headers));
+            $count_headers = count($headers);
+            // create json, CSV import disabled
+            if(!$value->json && $this->input_no_import) {
+                
+                $value->columns = 1;
+
+                if ($this->min_col > 1 && $count_headers == 0) {
+                    $this->message('one');
+                    $value->columns = $this->min_col;
+                } else if ($count_headers && in_array($count_headers, $range)) {
+                    $value->columns = $count_headers;
+                    $this->message('two ' + 'header_count: ' + $count_headers);
+                } else if ($count_headers && !in_array($count_headers, $range) && $this->min_col && $this->min_col < $count_headers) {
+                    $value->columns = $this->min_col;
+                    $headers = array_slice($headers, 0, $value->columns);
+                    $this->message('three');
+                } else if ($count_headers && !in_array($count_headers, $range) && $this->min_col && $this->min_col > $count_headers) {
+                    $value->columns = $this->min_col;
+                    $headers = array_pad($headers, $value->columns, '');
+                    $this->message('four');
+                } else if ($count_headers && !in_array($count_headers, $range) && $this->max_col > $count_headers) {
+                    $value->columns = $this->max_col;
+                    $headers = array_pad($headers, $value->columns, '');
+                    $this->message('five');
+                }
+
+                $value->rows = 1;
+                $value->json = "[" . json_encode(array_fill(0, $value->columns, '')) . "]";
+
+            // json exist
+            } elseif ($value->json) {
+                if ($count_headers > $value->columns) {
+                    $headers = array_slice($headers, 0, $value->columns);
+                } elseif ($count_headers < $value->columns) {
+                    $headers = array_pad($headers, $value->columns, '');
+                }
+            }
+
             $attr = array(
                 'data-rows' => $value->rows,
                 'data-columns' => $value->columns,
                 'data-max' => $value->max,
-                'data-header' => $this->data['input_header'],
-                'data-height' => $this->data['input_height'],
+                'data-header' => $this->input_header,
+                'data-height' => $this->input_height,
                 'data-minimum-columns' => min($range),
                 'data-maximum-columns' => max($range),
-                'data-column-headers' => 0
+                'data-column-headers' => count(array_filter($headers)) ? json_encode($headers) : '',
+                'data-only-json' => $this->input_no_import
                 );
 
-            $headers = array_filter(explode(",", $this->data['headers']));
-            $count = count($headers);
-            if ($count) {
-                $headers = array_map('trim', $headers);
-                if ($count < $value->columns) {
-                    $headers = array_pad($headers, $value->columns, '');
-                } elseif ($count > $value->columns) {
-                    $headers = array_slice($headers, 0, $value->columns);
-                }
-
-                $attr['data-column-headers'] = json_encode($headers, JSON_UNESCAPED_UNICODE);
-            } 
-
+            $data_attr = '';
             foreach($attr as $k => $v) $data_attr .= "$k='$v' ";
 
             if ($this->user->isSuperuser()) {
@@ -143,7 +172,7 @@ class InputfieldJson extends Inputfield  {
                     "\$page->{$name}",
                     "\$page->{$name}->json",
                     "\$page->{$name}->csv",
-                    $this->data['headers'] ? "\$page->{$name}->header" : null,
+                    $this->headers ? "\$page->{$name}->header" : null,
                     );
                 
                 $info .= "<span class='superuser tooltip' title='" . implode(", ", array_filter($title)) . "'>";
@@ -151,7 +180,6 @@ class InputfieldJson extends Inputfield  {
                 $info .= $this->_("field info");
                 $info .= "</span>";
             }
-
 
             // .notes 
             $notes = array(
@@ -166,7 +194,6 @@ class InputfieldJson extends Inputfield  {
             $out .= "<div id='table_{$name}' class='handsontable' {$data_attr}></div>";
             $out .= "<p class='notes'>{$extra_info}</p>";
             $out .= "</div>";
-
             $out .= "<input name='{$name}_json' type='hidden' value='{$value->json}'>";
             $out .= "<div class='delete-popup'>";
             $out .= "<div class='padding'>";
@@ -318,12 +345,11 @@ class InputfieldJson extends Inputfield  {
         $field->attr('name', 'numeric');
         $field->label = $this->_('Numeric');
         $field->description  = $this->_('Force numeric string to numbers.');
-        $field->notes = $this->_("heavy for CPU");
+        $field->notes = $this->_("processor intensive");
         $field->attr('autocheck', 1);
         $field->attr('uncheckedValue', 0);
         $field->attr('checkedValue', 1);
-        $field->attr('value', $this->numeric);           
-        
+        $field->attr('value', $this->numeric);
         $field->columnWidth = 25;
         $fieldset->append($field);
         // Minimum columns
@@ -398,7 +424,19 @@ class InputfieldJson extends Inputfield  {
         $field->description = $this->_("Seperate each header with a comma, editors can't overwrite them. ");
         $field->notes  = $this->_("The headers are NOT part of the data set.");
         $field->notes .= $this->_(" <?= \$page->$this->name->headers ?>");
-        $fieldset->append($field);        
+        $field->columnWidth = 75;
+        $fieldset->append($field);
+        // Start with JSON
+        $field = $this->modules->get('InputfieldCheckbox');
+        $field->attr('name', 'input_no_import');
+        $field->label = $this->_('Start With Table');
+        $field->description  = $this->_('Start with table input, skip the CSV part of the Inputfield.');
+        $field->attr('autocheck', 1);
+        $field->attr('uncheckedValue', 0);
+        $field->attr('checkedValue', 1);
+        $field->attr('value', $this->input_no_import);
+        $field->columnWidth = 25;
+        $fieldset->append($field);
         // Append all Inputfield Settings
         $inputfields->append($fieldset);
 

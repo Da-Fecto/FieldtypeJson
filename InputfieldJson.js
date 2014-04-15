@@ -24,30 +24,45 @@ $(function () {
         rows: 0,
         // number of columns
         columns: 0,
+        // min / max
+        cols: {
+            min: 0,
+            max: 0
+        },
         // max number of rows
-        max: 0,
+        max_rows: 0,
         // fixed first row
         fixed_top: 1,
-        // max visible columns
+        // hight in rows
         height: 0,
         // extra height if protected header is rendered
         header_height: 0,
+        // column headers
+        col_headers: null,
         // does the inputfield exists
         exists: null,
         // JSON data
         data: null,
         // label title of the field
         header: '',
+        // no CSV import
+        no_import: 0,
         // width of the field
         width: 0,
         // containers
         containers: {
-            'json': null,
-            'csv': null,
+            json: null,
+            csv: null
         },
+        // option for handson
+        options: {},
+        // full contextMenu
+        contextMenu: ["row_above", "row_below", "hsep1", "col_left", "col_right", "hsep2", "remove_row", "remove_col", "hsep3", "undo", "redo"],
+        // temperary
+        tempMenu: [],
 
         // populate the values  
-        setValue: function () {
+        setValues: function () {
             JsonField.id = $('.InputfieldJson div.handsontable');
             if (!JsonField.id.length) return false;
             JsonField.id = $('.InputfieldJson div.handsontable').attr('id');
@@ -55,10 +70,14 @@ $(function () {
             JsonField.div = $('#' + JsonField.id);
             JsonField.parent = JsonField.div.closest('.Inputfield');
             JsonField.rows = JsonField.div.data('rows');
-            JsonField.max = JsonField.div.data('max');
+            JsonField.max_rows = JsonField.div.data('max');
             JsonField.columns = JsonField.div.data('columns');
             JsonField.fixed_top = JsonField.div.data('header');
             JsonField.height = JsonField.div.data('height');
+            JsonField.no_import = JsonField.div.data('only-json');
+            JsonField.col_headers = JsonField.div.data('column-headers');
+            JsonField.cols.min = JsonField.div.data('minimum-columns');
+            JsonField.cols.max = JsonField.div.data('maximum-columns');
             JsonField.input = $("input[name='" + JsonField.name + "_json']");
             JsonField.textarea = $("textarea[name='" + JsonField.name + "_csv']");
             JsonField.notes = JsonField.parent.find(".notes");
@@ -67,31 +86,50 @@ $(function () {
             JsonField.width = JsonField.div.width();
             JsonField.containers.json = $("#" + JsonField.name + "_json_container");
             JsonField.containers.csv = $("#" + JsonField.name + "_csv_container");
+            JsonField.data = JSON.parse(JsonField.val);
             JsonField.exists = function () {
                 return JsonField.div.length && JsonField.value ? true : false;
             };
-            JsonField.data = JSON.parse(JsonField.val);
         },
 
         // source is one of the strings: "alter", "empty", "edit", "populateFromArray", "loadData", "autofill", "paste"
-        setData: function (changes, source) {
+        setData: function (index, amount) {
 
             var table = JsonField.div.handsontable('getInstance');
-
             JsonField.rows = JsonField.div.handsontable('countRows'),
             JsonField.columns = JsonField.div.handsontable('countCols');
+            JsonField.tempMenu = JsonField.contextMenu;
 
-            if (!JsonField.rows || !JsonField.columns) {
+            // conditionals
+            if (JsonField.col_headers) {
+                JsonField.options['colHeaders'] = JsonField.col_headers;
+                JsonField.tempMenu = ["row_above", "row_below", "hsep1", "remove_row", "hsep3", "undo", "redo"];
+            }
 
+            if (JsonField.cols.min) {
+                JsonField.options['minCols'] = JsonField.cols.min;
+            }
+
+            if (JsonField.cols.max) {
+                JsonField.options['maxCols'] = JsonField.cols.max;
+            }
+
+            if (JsonField.no_import) {
+                JsonField.options['minRows'] = 1;
+                if (JsonField.rows === 1) {
+                    JsonField.tempMenu = ["row_above", "row_below", "hsep1", "col_left", "col_right", "hsep3", "undo", "redo"];
+                }
+            }
+
+            JsonField.options['contextMenu'] = JsonField.tempMenu;
+
+            if ((!JsonField.rows || !JsonField.columns) && !JsonField.no_import) {
                 JsonField.input.val('');
                 JsonField.input.prop('disabled', 'disabled');
                 JsonField.containers.json.slideUp("slow");
-
                 JsonField.textarea.val('');
                 JsonField.textarea.prop("disabled", false);
                 JsonField.containers.csv.slideDown("slow");
-
-                // prevent error
                 table.updateSettings({
                     data: [[]]
                 });
@@ -99,6 +137,7 @@ $(function () {
             } else {
                 JsonField.data = table.getData();
                 JsonField.input.val(JSON.stringify(JsonField.data));
+                table.updateSettings(JsonField.options);
                 return true;
             }
 
@@ -112,7 +151,7 @@ $(function () {
         setHeight: function () {
             var table = JsonField.div.handsontable('getInstance'),
                 options = {};
-            if (JsonField.rows > JsonField.max) {
+            if (JsonField.rows > JsonField.max_rows) {
                 options['height'] = (JsonField.height * 25) + JsonField.header_height + 10;
             }
             table.updateSettings(options);
@@ -120,7 +159,6 @@ $(function () {
 
         // handsontable
         table: function () {
-
             JsonField.div.handsontable({
                 data: JsonField.data,
                 outsideClickDeselects: true,
@@ -130,7 +168,7 @@ $(function () {
                 autoWrapRow: true,
                 contextMenu: true,
                 fixedRowsTop: JsonField.fixed_top,
-                maxRows: JsonField.max,
+                maxRows: JsonField.max_rows,
                 variableRowHeights: false,
                 height: function () {
                     if (JsonField.div.data('column-headers')) {
@@ -147,8 +185,8 @@ $(function () {
                     JsonField.setData(changes, source);
                 },
                 afterRemoveRow: function (index, amount) {
-                    // index is an index of starter row.
-                    // amount is an anount of removed rows.
+                    // index is an index of start row.
+                    // amount is an amount of removed rows.
                     JsonField.exists = JsonField.setData(index, amount);
                     if (JsonField.exists) {
                         JsonField.setHeight();
@@ -156,23 +194,27 @@ $(function () {
                     }
                 },
                 afterCreateRow: function (index, amount) {
-                    // index represents the index of first newly created row in the data source array.
-                    // amount number of newly created rows in the data source array.                    
+                    // index is an index of start row.
+                    // amount is an amount of newly created rows.
                     JsonField.exists = JsonField.setData(index, amount);
                     if (JsonField.exists) {
                         JsonField.setHeight();
                         JsonField.updateNotes();
                     }
                 },
-                afterRemoveCol: function (changes, source) {
-                    JsonField.exists = JsonField.setData(changes, source);
+                afterRemoveCol: function (index, amount) {
+                    // index is an index of start column.
+                    // amount is an amount of removed columns.                    
+                    JsonField.exists = JsonField.setData(index, amount);
                     if (JsonField.exists) {
                         JsonField.setHeight();
                         JsonField.updateNotes();
                     }
                 },
-                afterCreateCol: function (changes, source) {
-                    JsonField.exists = JsonField.setData(changes, source);
+                afterCreateCol: function (index, amount) {
+                    // index is an index of start column.
+                    // amount is an amount of created columns.   
+                    JsonField.exists = JsonField.setData(index, amount);
                     if (JsonField.exists) {
                         JsonField.setHeight();
                         JsonField.updateNotes();
@@ -182,28 +224,6 @@ $(function () {
                     console.log(instance);
                 }
             });
-
-            // Conditional settings
-            var table = JsonField.div.handsontable('getInstance'),
-                options = {};
-
-            if (JsonField.div.data('minimum-columns')) {
-                options['minCols'] = JsonField.div.data('minimum-columns');
-            }
-
-            if (JsonField.div.data('minimum-columns')) {
-                options['maxCols'] = JsonField.div.data('maximum-columns');
-            }
-
-            if (JsonField.div.data('column-headers')) {
-                options['colHeaders'] = JsonField.div.data('column-headers');
-                //options['contextMenu'] = ['row_above', 'row_below', 'remove_row', 'undo', 'redo'];
-                options['minRows'] = 1;
-            }
-
-            options['fixedRowsTop'] = JsonField.fixed_top;
-            table.updateSettings(options);
-
         },
 
         /**
@@ -211,8 +231,10 @@ $(function () {
          *
          */
         init: function () {
-            if (JsonField.setValue() !== false) {
+            if (JsonField.setValues() !== false) {
+
                 JsonField.table();
+                JsonField.setData('initialize', null);
 
                 // visualize header row
                 if (JsonField.div.data('header') == 1) {

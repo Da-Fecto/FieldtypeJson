@@ -310,10 +310,14 @@ class JsonField extends WireData {
             $min = min($range);
             $max = max($range);
             if ($columns > $max) {
-                $this->error($this->_('We have sliced some columns'));
+                $needed = $columns - $max;
+                $message = sprintf($this->_n("The input held too much columns, we sliced %d column off.", "The input held too much columns, we sliced %d columns off.", $needed), $needed);
+                $this->error($message);
                 $slicing = true;
             } elseif ($columns < $min) {
-                $this->error($this->_('We have padded some columns'));
+                $needed = $min - $columns;
+                $message = sprintf($this->_n("We needed %d column more, the column is added.", "We needed at least %d columns more, the columns are added.", $needed), $needed);
+                $this->error($message);
                 $padding = true;
             }
         }
@@ -391,6 +395,8 @@ class JsonField extends WireData {
     public function __toString() {
         $out = '';
         $array = json_decode($this->json, true);
+        // suppress error before using array_filter
+        if(!count($array)) return $out; 
         if(!count(array_filter($array))) return $out;
         $columns = $this->columns;
         $cells = $columns * $this->rows;
