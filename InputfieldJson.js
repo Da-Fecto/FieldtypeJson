@@ -118,12 +118,20 @@ $(function () {
                 JsonField.options['minRows'] = 1;
                 if (JsonField.rows === 1) {
                     JsonField.tempMenu = ["row_above", "row_below", "hsep1", "col_left", "col_right", "hsep3", "undo", "redo"];
+                    $(".notes .delete").css({
+                        display: 'none'
+                    });
+                } else {
+                    $(".notes .delete").css({
+                        display: 'inline'
+                    });
                 }
             }
 
             JsonField.options['contextMenu'] = JsonField.tempMenu;
 
             if ((!JsonField.rows || !JsonField.columns) && !JsonField.no_import) {
+                $(".InputfieldJson .InputfieldContent > .description").slideUp("slow");
                 JsonField.input.val('');
                 JsonField.input.prop('disabled', 'disabled');
                 JsonField.containers.json.slideUp("slow");
@@ -175,9 +183,15 @@ $(function () {
                         JsonField.header_height = 25;
                     }
 
-                    if (JsonField.rows > JsonField.height) {
+                    if (JsonField.rows >= JsonField.height) {
+                        // JsonField.notes.css({
+                        //     paddingTop: 10
+                        // });
                         return (JsonField.height * 25);
                     } else {
+                        // JsonField.notes.css({
+                        //     paddingTop: 0
+                        // });
                         return (JsonField.rows * 25) + JsonField.header_height;
                     }
                 },
@@ -221,7 +235,7 @@ $(function () {
                     }
                 },
                 UndoRedo: function (instance) {
-                    console.log(instance);
+                    console.log('instance');
                 }
             });
         },
@@ -333,7 +347,13 @@ $(function () {
     function delete_rows() {
         $(".delete-popup").dialog("close");
         if ($(".delete-popup input").val() === 'DELETE') {
-            JsonField.div.handsontable('alter', 'remove_row', 0, JsonField.rows);
+            if (JsonField.no_import) {
+                JsonField.div.handsontable('alter', 'remove_row', 1, JsonField.rows);
+                JsonField.div.handsontable('alter', 'insert_row');
+                JsonField.div.handsontable('alter', 'remove_row', 0);
+            } else {
+                JsonField.div.handsontable('alter', 'remove_row', 0, JsonField.rows);
+            }
         }
     }
 

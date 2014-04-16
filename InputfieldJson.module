@@ -429,7 +429,7 @@ class InputfieldJson extends Inputfield  {
         // Start with JSON
         $field = $this->modules->get('InputfieldCheckbox');
         $field->attr('name', 'input_no_import');
-        $field->label = $this->_('Start With Table');
+        $field->label = $this->_('Only Table');
         $field->description  = $this->_('Start with table input, skip the CSV part of the Inputfield.');
         $field->attr('autocheck', 1);
         $field->attr('uncheckedValue', 0);
