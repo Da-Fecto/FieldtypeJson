@@ -269,7 +269,7 @@ class JsonField extends WireData {
     /**
      * Methode for the str_getcsv function to use as callback
      * 
-     * @param  [type] $string [description]
+     * @param string $string one line of text, representing a row
      * @return array array('value 1', 'value 2', 'value 3', 'etc...')
      */
     protected function stringGetcsv($line) {
@@ -380,7 +380,7 @@ class JsonField extends WireData {
         if (!is_array($this->array)) throw new WireException(__METHOD__ . ' expect $this->array to be an array, "' . gettype($this->array) . '" given');
         $out = '';
         $handle = fopen('php://temp', 'r+'); // temp read/write file-like wrapper
-        foreach ($this->array as $line) fputcsv($handle, $line, ',', '"');
+        foreach ($this->array as $line) fputcsv($handle, $line, $this->delimiter, '"');
         rewind($handle);
         while (!feof($handle)) $out .= fread($handle, 8192);
         fclose($handle);
