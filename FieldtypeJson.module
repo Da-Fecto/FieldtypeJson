@@ -26,7 +26,7 @@ class FieldtypeJson extends Fieldtype {
     public static function getModuleInfo() {
         return array(
             'title' => 'Fieldtyp Json',
-            'version' => 1,
+            'version' => 10,
             'summary' => 'Fieldtype for InputfieldJson.',
             'author' => 'Martijn Geerts',
             'installs' => array('InputfieldJson'),

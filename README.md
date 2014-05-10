@@ -31,6 +31,8 @@ Check **Table Header** if you want the default output render a table header. And
 
 ## How to use
 
+In the examples the fieldname 'fieldname' is used.
+
 ``` php
 // (string) the table markup
 $page->fieldname
@@ -47,7 +49,6 @@ $page->fieldname->rows
 // (int) number of columns  
 $page->fieldname->columns
 
-
 /**
  * Saving data with the API
  *
@@ -59,7 +60,7 @@ $page->of(false);
 $page->fieldname->json = $json;
 $page->save();
 
-// This will automagicly update the csv, row and columns as well.
+// This will automagicly update the csv, rows and columns as well.
 
 $csv = '"First Name","Last Name","Company Name",Address,City,State,Post,Phone,Email
 Rebbecca,Diogo,"Brandt, William F Esq","271 E 24th St",Lieth,TA,7315,03-8174-9123,mariko.didio@dodio.com.au
@@ -70,8 +71,25 @@ $page->of(false);
 $page->fieldname->csv = $csv;
 $page->save();
 
-// This will automagicly update the json, row and columns as well.
+// This will automagicly update the json, rows and columns as well.
 
 ```
 
 ## Where to use
+
+* If you need a small set tabular json data, and you don't know how many columns it has.
+* If you want to render tables quicky in your site.
+* If the the site editors have their manage small sets of data in CSV
+
+## Where NOT to use
+
+* Store very large sets of data.
+* If you have to rely rely on the data. ( all json is stored in a subfield, and the same for csv  )
+* When the data needs to be query-able
+
+
+### Special thanks to:
+* **Marcin Warpechowski**, creator and maintainer of Handsontable
+* **Raymond Geerts**, the CSV import part, originated from his idea)
+* **Ryan Cramer**, Coding wizard ProcessWire
+* All module developers...
