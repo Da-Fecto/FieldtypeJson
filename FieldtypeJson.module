@@ -25,9 +25,10 @@ class FieldtypeJson extends Fieldtype {
      */
     public static function getModuleInfo() {
         return array(
-            'title' => 'Json Field',
+            'title' => 'Fieldtyp Json',
             'version' => 1,
-            'summary' => 'This Fieldtype stores an JSON array',
+            'summary' => 'Fieldtype for InputfieldJson.',
+            'author' => 'Martijn Geerts',
             'installs' => array('InputfieldJson'),
             );
     }
@@ -143,7 +144,7 @@ class FieldtypeJson extends Fieldtype {
             $jsonField->set('rows', count($jsonField->array));
             $jsonField->set('columns', count($jsonField->array[0]));
         }
-        // On page create $page->created === null, 
+        // On page create $page->created === null,
         if ($jsonField->isChanged('json') || $jsonField->isChanged('csv') || $page->created === null) {
             $sleepValue['data'] =  $jsonField->json;
             $sleepValue['data_csv'] = $jsonField->csv;
@@ -268,7 +269,7 @@ class JsonField extends WireData {
 
     /**
      * Methode for the str_getcsv function to use as callback
-     * 
+     *
      * @param string $string one line of text, representing a row
      * @return array array('value 1', 'value 2', 'value 3', 'etc...')
      */
@@ -284,10 +285,11 @@ class JsonField extends WireData {
      * @throws WireException
      */
     public function createArray($string) {
-        // $mtime = microtime(); 
-        // $mtime = explode(" ", $mtime); 
-        // $mtime = $mtime[1] + $mtime[0]; 
-        // $starttime = $mtime; 
+        // Timer for testing performance
+        // $mtime = microtime();
+        // $mtime = explode(" ", $mtime);
+        // $mtime = $mtime[1] + $mtime[0];
+        // $starttime = $mtime;
         if (!$this->type) throw new WireException(__METHOD__ . ' expect $this->type to be an int, "' . gettype($this->type) . '" given');
         if ($this->type === 'json') { $array = json_decode($string, true); }
         if ($this->type === 'csv') { $array = array_map(array($this, 'stringGetcsv'), explode("\n", $string));}
@@ -306,7 +308,7 @@ class JsonField extends WireData {
         $columns = count($this->array[0]);
         $range = range($this->min_col, $this->max_col);
 
-        if (!($range[0] === 0 && count($range) === 1) && !in_array($columns, $range) && $columns && strlen($string)) { 
+        if (!($range[0] === 0 && count($range) === 1) && !in_array($columns, $range) && $columns && strlen($string)) {
             $min = min($range);
             $max = max($range);
             if ($columns > $max) {
@@ -329,7 +331,7 @@ class JsonField extends WireData {
             $clean[$key] = array_map(function($value) {
                 $value = trim($value);
                 if ($this->numeric) {
-                    // fast check for heavy preg_match 
+                    // fast check for heavy preg_match
                     if(ctype_digit(substr($value, 0, 1))) {
                         // 123,45 -> $match[0] else match is NULL
                         preg_match('/^\d+,\d+$/', $value, $match);
@@ -344,12 +346,12 @@ class JsonField extends WireData {
         }
         if ($dirty) $this->message($this->_('The input is sanitized.'));
         $this->array = $filled ? $clean : array();
-       // $mtime = microtime(); 
-       // $mtime = explode(" ",$mtime); 
-       // $mtime = $mtime[1] + $mtime[0]; 
-       // $endtime = $mtime; 
+       // $mtime = microtime();
+       // $mtime = explode(" ",$mtime);
+       // $mtime = $mtime[1] + $mtime[0];
+       // $endtime = $mtime;
        // $totaltime = ($endtime - $starttime);
-       // $this->message("total time: " . $totaltime); 
+       // $this->message("total time: " . $totaltime);
     }
 
     /**
@@ -396,7 +398,7 @@ class JsonField extends WireData {
         $out = '';
         $array = json_decode($this->json, true);
         // suppress error before using array_filter
-        if(!count($array)) return $out; 
+        if(!count($array)) return $out;
         if(!count(array_filter($array))) return $out;
         $columns = $this->columns;
         $cells = $columns * $this->rows;

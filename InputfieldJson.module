@@ -24,7 +24,7 @@
 - Make csv downloadable from inputfield
 - Fixed header
 - Drop table
-- If seperator ; and is in text, find out how to handle. 
+- If seperator ; and is in text, find out how to handle.
 
 */
 
@@ -38,9 +38,10 @@ class InputfieldJson extends Inputfield  {
     public static function getModuleInfo() {
         return array(
             'title' => __('Json', __FILE__), // Module Title
-            'summary' => __('Json (positive or negative)', __FILE__), // Module Summary
+            'summary' => __('Table like Inputfield that can import CSV, and handles data with an Excell like grid. (Handsontable)', __FILE__), // Module Summary
             'version' => 1,
-            'requires' => array('FieldtypeJson')
+            'author' => 'Martijn Geerts',
+            'requires' => array('FieldtypeJson'),
             );
     }
 
@@ -74,7 +75,7 @@ class InputfieldJson extends Inputfield  {
     public function init() {
         $config = $this->config;
         $class = $this->className();
-        $config->styles->append($config->urls->$class . 'handsontable/jquery.handsontable.full.css');       
+        $config->styles->append($config->urls->$class . 'handsontable/jquery.handsontable.full.css');
         $config->scripts->append($config->urls->$class . 'handsontable/jquery.handsontable.full.js');
 
 
@@ -94,7 +95,7 @@ class InputfieldJson extends Inputfield  {
      * @return string
      */
     public function ___render() {
-        
+
         $out = '';
         $info = '';
         $hide = 'json';
@@ -103,7 +104,7 @@ class InputfieldJson extends Inputfield  {
 
         /**
          * json part
-         * 
+         *
          */
 
         //if ($value->json || $this->data['input_no_import']) {
@@ -112,12 +113,12 @@ class InputfieldJson extends Inputfield  {
             // for js data attribute
             $hide = 'csv';
             $attr = array();
-            $range = range($value->min_col, $value->max_col);     
+            $range = range($value->min_col, $value->max_col);
             $headers = array_map('trim', explode(",", $this->headers));
             $count_headers = count($headers);
             // create json, CSV import disabled
             if(!$value->json && $this->input_no_import) {
-                
+
                 $value->columns = 1;
 
                 if ($this->min_col > 1 && $count_headers == 0) {
@@ -174,14 +175,14 @@ class InputfieldJson extends Inputfield  {
                     "\$page->{$name}->csv",
                     $this->headers ? "\$page->{$name}->header" : null,
                     );
-                
+
                 $info .= "<span class='superuser tooltip' title='" . implode(", ", array_filter($title)) . "'>";
                 $info .= "<i class='fa fa-info-circle'></i> ";
                 $info .= $this->_("field info");
                 $info .= "</span>";
             }
 
-            // .notes 
+            // .notes
             $notes = array(
                 $info,
                 "<a href='#' class='delete'><span class='delete'><i class='fa fa-times-circle'></i> " . $this->_("delete all rows") . "</span></a>",
@@ -202,11 +203,11 @@ class InputfieldJson extends Inputfield  {
             $out .= "</div>";
             $out .= "</div>";
 
-        } 
+        }
 
         /**
          * csv part
-         * 
+         *
          */
 
         if ($hide == 'csv') {
@@ -214,7 +215,7 @@ class InputfieldJson extends Inputfield  {
             $disabled = " disabled";
         } else {
             $classes = "";
-            $disabled = "";            
+            $disabled = "";
         }
 
         $options = array(
@@ -404,7 +405,7 @@ class InputfieldJson extends Inputfield  {
         $field->attr('autocheck', 1);
         $field->attr('uncheckedValue', 0);
         $field->attr('checkedValue', 1);
-        $field->attr('value', $this->input_header);        
+        $field->attr('value', $this->input_header);
         $field->columnWidth = 50;
         //$field->optionColumns = 2;
         $fieldset->append($field);
