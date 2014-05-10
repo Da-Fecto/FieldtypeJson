@@ -39,7 +39,7 @@ class InputfieldJson extends Inputfield  {
         return array(
             'title' => __('Json', __FILE__), // Module Title
             'summary' => __('Table like Inputfield that can import CSV, and handles data with an Excell like grid. (Handsontable)', __FILE__), // Module Summary
-            'version' => 1,
+            'version' => 10,
             'author' => 'Martijn Geerts',
             'requires' => array('FieldtypeJson'),
             );

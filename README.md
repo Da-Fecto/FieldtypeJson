@@ -1,6 +1,5 @@
 # FieldtypeJson & Inputfield
 
----
 
 This Inputfield aims to be an easy way for editors to import CSV data and control the data within the admin. The Inputfield is made possible with the the awesome [Handsontable](http://handsontable.com/) (@warpech) an Excel-like data grid editor for HTML, JavaScript & jQuery. It's possible to skip the CSV part entirely and start direct with an empty table of data.
 
@@ -74,3 +73,5 @@ $page->save();
 // This will automagicly update the json, row and columns as well.
 
 ```
+
+## Where to use
