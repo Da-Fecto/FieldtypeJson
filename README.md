@@ -92,4 +92,4 @@ $page->save();
 * **Marcin Warpechowski**, creator and maintainer of Handsontable
 * **Raymond Geerts**, the CSV import part, originated from his idea)
 * **Ryan Cramer**, Coding wizard ProcessWire
-* All module developers...
+* All module developers.
