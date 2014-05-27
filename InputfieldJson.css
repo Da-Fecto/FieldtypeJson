@@ -53,7 +53,7 @@
     font-size: 15px;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    text-align: left;    
+    text-align: left;
 }
 
 th .relative {
@@ -129,3 +129,6 @@ th .relative {
     border-bottom: 1px solid #d9e0e2;
 }
 
+.InputfieldJson .fa-scissors {
+    margin-right: 4px;
+}

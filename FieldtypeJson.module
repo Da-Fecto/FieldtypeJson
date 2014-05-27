@@ -5,7 +5,7 @@
  * This Fieldtype stores tabular data in csv & json strings and outputs a table by default.
  *
  * For documentation about the fields used in this class, please see:
- * @copyright ©2013, Martijn Geerts
+ * @copyright ©2014, Martijn Geerts
  *
  * ProcessWire 2.x
  * Copyright (C) 2010 by Ryan Cramer
@@ -26,7 +26,7 @@ class FieldtypeJson extends Fieldtype {
     public static function getModuleInfo() {
         return array(
             'title' => 'Fieldtyp Json',
-            'version' => 10,
+            'version' => 15,
             'summary' => 'Fieldtype for InputfieldJson.',
             'author' => 'Martijn Geerts',
             'installs' => array('InputfieldJson'),
@@ -117,47 +117,40 @@ class FieldtypeJson extends Fieldtype {
      */
     public function ___sleepValue(Page $page, Field $field, $value) {
         $jsonField = $value;
-        $from_api = !is_array($jsonField->array);
-        $changes = count($jsonField->getChanges());
-        $sleepValue = array();
         if (!$jsonField instanceof JsonField) throw new WireException("Expecting an instance of JsonField");
-        if ($from_api && $jsonField->isChanged('json') && $jsonField->isChanged('csv') ) {
-            throw new WireException("Only allowed to save \$page->{$field->name}.json or \$page->{$field->name}.csv, not both.");
-        } elseif ($from_api && ($jsonField->isChanged('rows') || $jsonField->isChanged('columns'))) {
-            throw new WireException("Not allowed to save \$page->{$field->name}.rows or \$page->{$field->name}.columns.");
-        } elseif ($from_api && $changes > 1) {
-            throw new WireException("Only allowed to save \$page->{$field->name}.json or \$page->{$field->name}.csv");
-        } elseif ($from_api && !$changes && $page->created !== null) {
-            throw new WireException("Only allowed to saving for \$page->{$field->name}.json or \$page->{$field->name}.csv");
+
+        if ($this->page->template != 'admin') {
+
+            $changes = $jsonField->getChanges();
+
+            if (in_array('rows', $changes) || in_array('columns', $changes)) {
+                throw new WireException("\$page->{$field->name}.columns and \$page->{$field->name}.rows can't be set with the API.");
+            } elseif (in_array('csv', $changes) || in_array('json', $changes)) {
+                $key = $changes[0];
+                $jsonField->type = $key;
+                $jsonField->createArray($jsonField->$key);
+                $jsonField->set($key, $jsonField->sanitizedString());
+                $key = $key == 'csv' ? 'json' : 'csv';
+                $jsonField->type = $key;
+                $jsonField->set($key, $jsonField->sanitizedString());
+                $jsonField->set('rows', count($jsonField->array));
+                $jsonField->set('columns', count($jsonField->array[0]));
+            }
         }
-        // The inputfield set's an array, but from the api side it doesn't,
-        // this way we know that the values are set with the API
-        if ($from_api && $changes === 1) {
-            $changed = $jsonField->getChanges();
-            $key = $changed[0];
-            $jsonField->type = $key;
-            $jsonField->createArray($jsonField->$key);
-            $jsonField->set($key, $jsonField->sanitizedString());
-            $key = $key == 'csv' ? 'json' : 'csv';
-            $jsonField->type = $key;
-            $jsonField->set($key, $jsonField->sanitizedString());
-            $jsonField->set('rows', count($jsonField->array));
-            $jsonField->set('columns', count($jsonField->array[0]));
-        }
-        // On page create $page->created === null,
-        if ($jsonField->isChanged('json') || $jsonField->isChanged('csv') || $page->created === null) {
-            $sleepValue['data'] =  $jsonField->json;
-            $sleepValue['data_csv'] = $jsonField->csv;
-            $sleepValue['data_rows'] = (int) $jsonField->rows;
-            $sleepValue['data_columns'] = (int) $jsonField->columns;
-        }
-        return $sleepValue;
+
+        return array(
+            'data' => $jsonField->json,
+            'data_csv' => $jsonField->csv,
+            'data_rows' => (int) $jsonField->rows,
+            'data_columns' => (int) $jsonField->columns,
+        );
     }
 
     /**
      * Sanitize the value for runtime storage.
      *
-     * This method should remove anything that's invalid from the given value. If it can't be sanitized, it should be blanked.
+     * This method should remove anything that's invalid from the given value.
+     * If it can't be sanitized, it should be blanked.
      * This method filters every value set to a Page instance.
      *
      * @param Page $page
@@ -285,11 +278,9 @@ class JsonField extends WireData {
      * @throws WireException
      */
     public function createArray($string) {
-        // Timer for testing performance
-        // $mtime = microtime();
-        // $mtime = explode(" ", $mtime);
-        // $mtime = $mtime[1] + $mtime[0];
-        // $starttime = $mtime;
+
+        //$timer = Debug::timer();
+
         if (!$this->type) throw new WireException(__METHOD__ . ' expect $this->type to be an int, "' . gettype($this->type) . '" given');
         if ($this->type === 'json') { $array = json_decode($string, true); }
         if ($this->type === 'csv') { $array = array_map(array($this, 'stringGetcsv'), explode("\n", $string));}
@@ -346,12 +337,8 @@ class JsonField extends WireData {
         }
         if ($dirty) $this->message($this->_('The input is sanitized.'));
         $this->array = $filled ? $clean : array();
-       // $mtime = microtime();
-       // $mtime = explode(" ",$mtime);
-       // $mtime = $mtime[1] + $mtime[0];
-       // $endtime = $mtime;
-       // $totaltime = ($endtime - $starttime);
-       // $this->message("total time: " . $totaltime);
+
+        //$this->message("Cleaning in the createArray methode took " . Debug::timer($timer) . " seconds");
     }
 
     /**

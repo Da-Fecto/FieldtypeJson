@@ -8,7 +8,7 @@ $(function () {
         id: '',
         // fieldname, without json or csv
         name: '',
-        // the wrapper div 
+        // the wrapper div
         div: '',
         // jQuery .inputfield li
         parent: '',
@@ -61,7 +61,7 @@ $(function () {
         // temperary
         tempMenu: [],
 
-        // populate the values  
+        // populate the values
         setValues: function () {
             JsonField.id = $('.InputfieldJson div.handsontable');
             if (!JsonField.id.length) return false;
@@ -218,7 +218,7 @@ $(function () {
                 },
                 afterRemoveCol: function (index, amount) {
                     // index is an index of start column.
-                    // amount is an amount of removed columns.                    
+                    // amount is an amount of removed columns.
                     JsonField.exists = JsonField.setData(index, amount);
                     if (JsonField.exists) {
                         JsonField.setHeight();
@@ -227,15 +227,12 @@ $(function () {
                 },
                 afterCreateCol: function (index, amount) {
                     // index is an index of start column.
-                    // amount is an amount of created columns.   
+                    // amount is an amount of created columns.
                     JsonField.exists = JsonField.setData(index, amount);
                     if (JsonField.exists) {
                         JsonField.setHeight();
                         JsonField.updateNotes();
                     }
-                },
-                UndoRedo: function (instance) {
-                    console.log('instance');
                 }
             });
         },
@@ -259,6 +256,11 @@ $(function () {
     };
 
     JsonField.init();
+
+    // redraw when in tab
+    $(".WireTabs a").on('click', function() {
+        JsonField.init();
+    });
 
     // remove default description from csv import
     if (!$('.InputfieldJson div.handsontable').length) {

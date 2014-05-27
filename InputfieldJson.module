@@ -6,7 +6,7 @@
  * The fieldtype using this data wil handle csv and the json type of data.
  *
  * For documentation about the fields used in this class, please see:
- * @copyright 2013, Martijn Geerts
+ * @copyright 2014, Martijn Geerts
  *
  * ProcessWire 2.x
  * Copyright (C) 2010 by Ryan Cramer
@@ -16,17 +16,6 @@
  * http://www.ryancramer.com
  *
  */
-
-/*
-
-@todo:
-
-- Make csv downloadable from inputfield
-- Fixed header
-- Drop table
-- If seperator ; and is in text, find out how to handle.
-
-*/
 
 class InputfieldJson extends Inputfield  {
 
@@ -39,7 +28,7 @@ class InputfieldJson extends Inputfield  {
         return array(
             'title' => __('Json', __FILE__), // Module Title
             'summary' => __('Table like Inputfield that can import CSV, and handles data with an Excell like grid. (Handsontable)', __FILE__), // Module Summary
-            'version' => 10,
+            'version' => 15,
             'author' => 'Martijn Geerts',
             'requires' => array('FieldtypeJson'),
             );
@@ -107,7 +96,6 @@ class InputfieldJson extends Inputfield  {
          *
          */
 
-        //if ($value->json || $this->data['input_no_import']) {
         if ($value->json || $this->data['input_no_import']) {
 
             // for js data attribute
@@ -226,13 +214,13 @@ class InputfieldJson extends Inputfield  {
 
         $select = "<select name='{$name}_delimiter'>";
         foreach ($options as $val => $label) {
-            $selected = $value->delimiter == $val ? ' selected' : '';
+            $selected = $this->data['delimiter'] == $val ? ' selected' : '';
             $select .= "<option value='{$val}'{$selected}>{$label}</option>";
         }
         $select .= "</select>";
 
         $notes = array(
-            "<span class='right'><i class='fa fa-scissors tooltip' title='" . $this->_("CSV delimiter") . "'></i> {$select}</span>",
+            "<span class='right'><i class='fa fa-scissors tooltip' title='" . $this->_("CSV delimiter") . "'></i>{$select}</span>",
             );
 
 
